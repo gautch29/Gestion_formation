@@ -1,60 +1,92 @@
 import sqlite3
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 from datetime import date
+import logging
 
+# Configuration du logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+###############################
+# Fonctions d'accès à la BDD
+###############################
 def create_database():
-    # Crée la table des formations
-    c.execute('''CREATE TABLE IF NOT EXISTS courses
-                    (course_id INTEGER PRIMARY KEY,
-                     course_code TEXT,
-                     course_description TEXT,
-                     course_duration INTEGER,
-                     course_name TEXT)''')
-    # Crée la table du personnel
-    c.execute('''CREATE TABLE IF NOT EXISTS students
-                    (student_id INTEGER PRIMARY KEY,
-                     student_identification TEXT,
-                     student_name TEXT)''')
-    # Crée la table des séances (si la table existe déjà, elle ne sera pas recréée)
-    c.execute('''CREATE TABLE IF NOT EXISTS lessons
-                    (lesson_id INTEGER PRIMARY KEY,
-                     lesson_date TEXT,
-                     lesson_course_id INTEGER)''')
-    # Rajoute la colonne teacher_id si elle n'existe pas encore dans lessons
-    c.execute("PRAGMA table_info(lessons)")
-    columns = [col[1] for col in c.fetchall()]
-    if "teacher_id" not in columns:
-         c.execute("ALTER TABLE lessons ADD COLUMN teacher_id INTEGER")
-         conn.commit()
-    # Crée la table de liaison entre personnel et séances
-    c.execute('''CREATE TABLE IF NOT EXISTS students_lessons
-                    (student_lesson_id INTEGER PRIMARY KEY,
-                     student_id INTEGER,
-                     lesson_id INTEGER)''')
+    try:
+        # Crée la table des formations
+        c.execute('''CREATE TABLE IF NOT EXISTS courses
+                        (course_id INTEGER PRIMARY KEY,
+                         course_code TEXT,
+                         course_description TEXT,
+                         course_duration INTEGER,
+                         course_name TEXT)''')
+        # Crée la table du personnel
+        c.execute('''CREATE TABLE IF NOT EXISTS students
+                        (student_id INTEGER PRIMARY KEY,
+                         student_identification TEXT,
+                         student_name TEXT)''')
+        # Crée la table des séances
+        c.execute('''CREATE TABLE IF NOT EXISTS lessons
+                        (lesson_id INTEGER PRIMARY KEY,
+                         lesson_date TEXT,
+                         lesson_course_id INTEGER,
+                         teacher_id INTEGER)''')
+        # Rajoute la colonne teacher_id si elle n'existe pas encore
+        c.execute("PRAGMA table_info(lessons)")
+        columns = [col[1] for col in c.fetchall()]
+        if "teacher_id" not in columns:
+            c.execute("ALTER TABLE lessons ADD COLUMN teacher_id INTEGER")
+            conn.commit()
+        # Crée la table de liaison entre personnels et séances
+        c.execute('''CREATE TABLE IF NOT EXISTS students_lessons
+                        (student_lesson_id INTEGER PRIMARY KEY,
+                         student_id INTEGER,
+                         lesson_id INTEGER)''')
+        conn.commit()
+        logging.info("Base de données initialisée avec succès.")
+    except Exception as e:
+        logging.error("Erreur lors de la création de la base de données : %s", e)
 
 def add_course(course_name, course_code, course_description, course_duration):
-    c.execute('''INSERT INTO courses (course_name, course_code, course_description, course_duration) 
-                 VALUES (?, ?, ?, ?)''', (course_name, course_code, course_description, course_duration))
-    conn.commit()
+    try:
+        c.execute('''INSERT INTO courses (course_name, course_code, course_description, course_duration) 
+                     VALUES (?, ?, ?, ?)''', (course_name, course_code, course_description, course_duration))
+        conn.commit()
+        logging.info("Formation ajoutée : %s", course_name)
+    except Exception as e:
+        logging.error("Erreur lors de l'ajout de la formation : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de l'ajout de la formation.")
 
 def add_student(student_name, student_identification):
-    c.execute('''INSERT INTO students (student_name, student_identification) 
-                 VALUES (?, ?)''', (student_name, student_identification))
-    conn.commit()
+    try:
+        c.execute('''INSERT INTO students (student_name, student_identification) 
+                     VALUES (?, ?)''', (student_name, student_identification))
+        conn.commit()
+        logging.info("Personnel ajouté : %s", student_name)
+    except Exception as e:
+        logging.error("Erreur lors de l'ajout du personnel : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de l'ajout du personnel.")
 
 def add_lesson(lesson_date, lesson_course_id, teacher_id):
-    c.execute('''INSERT INTO lessons (lesson_date, lesson_course_id, teacher_id) 
-                 VALUES (?, ?, ?)''', (lesson_date, lesson_course_id, teacher_id))
-    conn.commit()
-    return c.lastrowid
+    try:
+        c.execute('''INSERT INTO lessons (lesson_date, lesson_course_id, teacher_id) 
+                     VALUES (?, ?, ?)''', (lesson_date, lesson_course_id, teacher_id))
+        conn.commit()
+        logging.info("Séance ajoutée le %s", lesson_date)
+        return c.lastrowid
+    except Exception as e:
+        logging.error("Erreur lors de l'ajout de la séance : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de l'ajout de la séance.")
 
 def add_student_lesson(student_id, lesson_id):
-    c.execute('''INSERT INTO students_lessons (student_id, lesson_id) 
-                 VALUES (?, ?)''', (student_id, lesson_id))
-    conn.commit()
+    try:
+        c.execute('''INSERT INTO students_lessons (student_id, lesson_id) 
+                     VALUES (?, ?)''', (student_id, lesson_id))
+        conn.commit()
+        logging.info("Lien ajouté entre étudiant %s et séance %s", student_id, lesson_id)
+    except Exception as e:
+        logging.error("Erreur lors de l'ajout du lien étudiant-séance : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de l'ajout du lien étudiant-séance.")
 
 def get_courses():
     c.execute('''SELECT * FROM courses''')
@@ -77,44 +109,117 @@ def get_lessons_by_personnel(personnel_id):
     return c.fetchall()
 
 def remove_course(course_id):
-    c.execute('''DELETE FROM courses WHERE course_id = ?''', (course_id,))
-    conn.commit()
+    try:
+        c.execute('''DELETE FROM courses WHERE course_id = ?''', (course_id,))
+        conn.commit()
+        logging.info("Formation supprimée : %s", course_id)
+    except Exception as e:
+        logging.error("Erreur lors de la suppression de la formation : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la suppression de la formation.")
 
 def remove_student(student_id):
-    c.execute('''DELETE FROM students WHERE student_id = ?''', (student_id,))
-    conn.commit()
+    try:
+        c.execute('''DELETE FROM students WHERE student_id = ?''', (student_id,))
+        conn.commit()
+        logging.info("Personnel supprimé : %s", student_id)
+    except Exception as e:
+        logging.error("Erreur lors de la suppression du personnel : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la suppression du personnel.")
 
 def remove_lesson(lesson_id):
-    c.execute('''DELETE FROM lessons WHERE lesson_id = ?''', (lesson_id,))
-    conn.commit()
+    try:
+        c.execute('''DELETE FROM lessons WHERE lesson_id = ?''', (lesson_id,))
+        conn.commit()
+        logging.info("Séance supprimée : %s", lesson_id)
+    except Exception as e:
+        logging.error("Erreur lors de la suppression de la séance : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la suppression de la séance.")
 
 def remove_student_lesson(student_lesson_id):
-    c.execute('''DELETE FROM students_lessons WHERE student_lesson_id = ?''', (student_lesson_id,))
-    conn.commit()
-
+    try:
+        c.execute('''DELETE FROM students_lessons WHERE student_lesson_id = ?''', (student_lesson_id,))
+        conn.commit()
+        logging.info("Lien étudiant-séance supprimé : %s", student_lesson_id)
+    except Exception as e:
+        logging.error("Erreur lors de la suppression du lien étudiant-séance : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la suppression du lien étudiant-séance.")
 
 def remove_lesson_and_links(lesson_id):
-    # Supprime tous les liens entre personnels et la séance
-    c.execute('DELETE FROM students_lessons WHERE lesson_id = ?', (lesson_id,))
-    # Supprime la séance
-    c.execute('DELETE FROM lessons WHERE lesson_id = ?', (lesson_id,))
-    conn.commit()
+    try:
+        # Supprime tous les liens entre étudiants et la séance
+        c.execute('DELETE FROM students_lessons WHERE lesson_id = ?', (lesson_id,))
+        # Supprime la séance
+        c.execute('DELETE FROM lessons WHERE lesson_id = ?', (lesson_id,))
+        conn.commit()
+        logging.info("Séance et ses liens supprimés : %s", lesson_id)
+    except Exception as e:
+        logging.error("Erreur lors de la suppression de la séance et ses liens : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la suppression de la séance et de ses liens.")
 
+# Nouvelles fonctions de mise à jour (exemples)
+def update_course(course_id, course_name, course_code, course_description, course_duration):
+    try:
+        c.execute('''UPDATE courses
+                     SET course_name = ?, course_code = ?, course_description = ?, course_duration = ?
+                     WHERE course_id = ?''', (course_name, course_code, course_description, course_duration, course_id))
+        conn.commit()
+        logging.info("Formation %s mise à jour", course_id)
+        return True
+    except Exception as e:
+        logging.error("Erreur lors de la mise à jour de la formation : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la mise à jour de la formation.")
+        return False
+
+def update_student(student_id, student_name, student_identification):
+    try:
+        c.execute('''UPDATE students
+                     SET student_name = ?, student_identification = ?
+                     WHERE student_id = ?''', (student_name, student_identification, student_id))
+        conn.commit()
+        logging.info("Personnel %s mis à jour", student_id)
+        return True
+    except Exception as e:
+        logging.error("Erreur lors de la mise à jour du personnel : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la mise à jour du personnel.")
+        return False
+
+def update_lesson(lesson_id, lesson_date, lesson_course_id, teacher_id):
+    try:
+        c.execute('''UPDATE lessons
+                     SET lesson_date = ?, lesson_course_id = ?, teacher_id = ?
+                     WHERE lesson_id = ?''', (lesson_date, lesson_course_id, teacher_id, lesson_id))
+        conn.commit()
+        logging.info("Séance %s mise à jour", lesson_id)
+        return True
+    except Exception as e:
+        logging.error("Erreur lors de la mise à jour de la séance : %s", e)
+        messagebox.showerror("Erreur", "Erreur lors de la mise à jour de la séance.")
+        return False
+
+def get_student_lessons(personnel_id):
+    c.execute('''SELECT sl.student_lesson_id, l.lesson_id, l.lesson_date, l.lesson_course_id, l.teacher_id 
+                 FROM students_lessons sl 
+                 JOIN lessons l ON sl.lesson_id = l.lesson_id 
+                 WHERE sl.student_id = ?''', (personnel_id,))
+    return c.fetchall()
+
+###############################
 # Connexion à la base de données
+###############################
 conn = sqlite3.connect('projet_kevin.db')
 c = conn.cursor()
 create_database()
 
+###############################
 # Création de la fenêtre principale
+###############################
 main_page = tk.Tk()
-main_page.title('Main Page')
+main_page.title('Gestion des séances de formation')
 main_page.geometry('1200x600')
 
-# Création d'un widget Notebook pour les onglets
 notebook = ttk.Notebook(main_page)
 notebook.pack(fill="both", expand=True)
 
-# Dictionnaire pour stocker les références aux pages (frames)
 frames = {}
 
 #####################################
@@ -124,62 +229,73 @@ def create_add_lesson_page():
     frame = tk.Frame(notebook)
     frames['add_lesson'] = frame
 
-    # Sélection de la date via un calendrier
     date_label = tk.Label(frame, text='Date de la séance:')
     date_label.pack(pady=5)
     date_entry = DateEntry(frame, date_pattern='dd/mm/yyyy')
     date_entry.set_date(date.today())
     date_entry.pack(pady=5)
-    # Redonne le focus à la fenêtre principale une fois la date sélectionnée
     date_entry.bind("<<DateEntrySelected>>", lambda event: main_page.focus())
 
-    # Choix de la formation via une Combobox
     formation_label = tk.Label(frame, text='Formation de la séance:')
     formation_label.pack(pady=5)
-    formations = get_courses()
-    formation_names = [course[4] for course in formations]
-    formation_combo = ttk.Combobox(frame, values=formation_names, state="readonly")
+    formation_combo = ttk.Combobox(frame, state="readonly")
     formation_combo.pack(pady=5)
 
-    # Choix du professeur via une Combobox
     teacher_label = tk.Label(frame, text='Professeur de la séance:')
     teacher_label.pack(pady=5)
-    personnels = get_students()
-    teacher_list = [f"{pers[2]} (ID: {pers[1]})" for pers in personnels]
-    teacher_combo = ttk.Combobox(frame, values=teacher_list, state="readonly")
+    teacher_combo = ttk.Combobox(frame, state="readonly")
     teacher_combo.pack(pady=5)
 
-    # Sélection de la liste des participants via un Listbox multi-sélection
     participants_label = tk.Label(frame, text='Sélectionnez les participants:')
     participants_label.pack(pady=5)
     participants_listbox = tk.Listbox(frame, selectmode="multiple", height=6, exportselection=False)
-    for pers in personnels:
-        participants_listbox.insert(tk.END, f"{pers[2]} (ID: {pers[1]})")
     participants_listbox.pack(pady=5)
 
     status_label = tk.Label(frame, text="", fg="green")
     status_label.pack(pady=5)
 
+    # Fonction pour rafraîchir les données des champs depuis la BDD
+    def refresh_combos():
+        courses = get_courses()
+        formation_combo['values'] = [course[4] for course in courses]
+
+        teachers = get_students()
+        teacher_combo['values'] = [f"{pers[2]} (ID: {pers[1]})" for pers in teachers]
+
+        participants_listbox.delete(0, tk.END)
+        for pers in teachers:
+            participants_listbox.insert(tk.END, f"{pers[2]} (ID: {pers[1]})")
+    # Attach refresh_combos to frame pour un appel externe
+    frame.refresh_combos = refresh_combos
+
+    # Mise à jour initiale
+    refresh_combos()
+
     def submit_lesson():
         try:
             lesson_date = date_entry.get_date().strftime('%d/%m/%Y')
+
+            courses = get_courses()
             formation_index = formation_combo.current()
             if formation_index == -1:
                 raise IndexError("Formation non sélectionnée")
-            lesson_course_id = formations[formation_index][0]
+            lesson_course_id = courses[formation_index][0]
 
+            teachers = get_students()
             teacher_index = teacher_combo.current()
             if teacher_index == -1:
                 raise IndexError("Professeur non sélectionné")
-            teacher_id = personnels[teacher_index][0]
+            teacher_id = teachers[teacher_index][0]
 
             lesson_id = add_lesson(lesson_date, lesson_course_id, teacher_id)
+            if lesson_id is None:
+                return
 
             selected_indices = participants_listbox.curselection()
             if not selected_indices:
                 raise IndexError("Aucun participant sélectionné")
             for index in selected_indices:
-                participant_id = personnels[index][0]
+                participant_id = teachers[index][0]
                 add_student_lesson(participant_id, lesson_id)
 
             status_label.config(text="Séance ajoutée avec succès !")
@@ -187,6 +303,7 @@ def create_add_lesson_page():
             formation_combo.set('')
             teacher_combo.set('')
             participants_listbox.selection_clear(0, tk.END)
+            refresh_combos()
         except IndexError as e:
             messagebox.showerror("Erreur", f"Veuillez sélectionner tous les éléments requis.\n{str(e)}")
 
@@ -194,6 +311,19 @@ def create_add_lesson_page():
     submit_button.pack(pady=10)
 
     notebook.add(frame, text="Ajouter une séance")
+
+def on_tab_changed(event):
+    selected_tab = event.widget.select()
+    frame = event.widget.nametowidget(selected_tab)
+    # Si le frame possède une fonction de rafraîchissement, on l'appelle
+    if hasattr(frame, "refresh_combos"):
+        frame.refresh_combos()
+    # On déclenche le bouton "Refresh" s'il existe dans le frame
+    for child in frame.winfo_children():
+        if isinstance(child, tk.Button) and child.cget("text") == "Refresh":
+            child.invoke()
+
+notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
 
 #####################################
 # PAGE : Affichage des séances par date
@@ -207,7 +337,6 @@ def create_get_lessons_page():
     lessons_date_entry = DateEntry(frame, date_pattern='dd/mm/yyyy')
     lessons_date_entry.set_date(date.today())
     lessons_date_entry.pack(pady=5)
-    # Mise à jour automatique dès que la date est sélectionnée
     lessons_date_entry.bind("<<DateEntrySelected>>", lambda event: refresh())
 
     listbox = tk.Listbox(frame, width=50, height=8)
@@ -222,7 +351,6 @@ def create_get_lessons_page():
         lessons = get_lessons_date(lesson_date_str)
         for lesson in lessons:
             courses = get_courses()
-            # Récupère le nom de la formation en fonction de lesson_course_id
             course_name = next((course[4] for course in courses if course[0] == lesson[2]), "Inconnu")
             listbox.insert(tk.END, f"ID {lesson[0]} - {course_name}")
         detail_label.config(text="")
@@ -230,13 +358,11 @@ def create_get_lessons_page():
     refresh_button = tk.Button(frame, text="Refresh", command=refresh)
     refresh_button.pack(pady=5)
 
-    # Bouton pour supprimer la séance sélectionnée
     def delete_selected_lesson():
         lessons = get_lessons_date(lessons_date_entry.get_date().strftime('%d/%m/%Y'))
         try:
             index = listbox.curselection()[0]
             lesson = lessons[index]
-            # Confirmer la suppression
             if messagebox.askyesno("Confirmer", "Voulez-vous vraiment supprimer cette séance et tous ses liens ?"):
                 remove_lesson_and_links(lesson[0])
                 messagebox.showinfo("Succès", "La séance et ses liens ont été supprimés.")
@@ -273,16 +399,6 @@ def create_get_lessons_page():
     notebook.add(frame, text="Voir les séances par date")
 
 #####################################
-# Nouvelle fonction : obtenir les séances d'un participant via la table de liaison
-#####################################
-def get_student_lessons(personnel_id):
-    c.execute('''SELECT sl.student_lesson_id, l.lesson_id, l.lesson_date, l.lesson_course_id, l.teacher_id 
-                 FROM students_lessons sl 
-                 JOIN lessons l ON sl.lesson_id = l.lesson_id 
-                 WHERE sl.student_id = ?''', (personnel_id,))
-    return c.fetchall()
-
-#####################################
 # PAGE : Affichage des séances par personnel avec suppression de lien
 #####################################
 def create_get_lessons_by_personnel_page():
@@ -292,7 +408,9 @@ def create_get_lessons_by_personnel_page():
     personnel_label = tk.Label(frame, text='Sélectionnez le personnel:')
     personnel_label.pack(pady=5)
 
-    personnel_list = tk.Listbox(frame, height=4)
+    # Désactivation de l'export de la sélection pour que le personnel reste sélectionné
+    personnel_list = tk.Listbox(frame, height=4, exportselection=False)
+    # On récupère la liste des personnels à l'ouverture du frame
     personnels = get_students()
     for pers in personnels:
         personnel_list.insert(tk.END, f"{pers[2]} (ID: {pers[1]})")
@@ -304,7 +422,8 @@ def create_get_lessons_by_personnel_page():
     detail_label = tk.Label(frame, text="", justify="left", wraplength=400)
     detail_label.pack(pady=5)
 
-    def refresh():
+    # Cette fonction rafraîchit la liste des séances selon le personnel sélectionné
+    def refresh(event=None):
         listbox.delete(0, tk.END)
         detail_label.config(text="")
         try:
@@ -314,16 +433,18 @@ def create_get_lessons_by_personnel_page():
             for les in lessons:
                 listbox.insert(tk.END, f"ID {les[1]} - Date: {les[2]}")
         except IndexError:
-            messagebox.showerror("Erreur", "Sélectionnez un personnel.")
+            listbox.delete(0, tk.END)
 
-    refresh_button = tk.Button(frame, text="Refresh", command=refresh)
-    refresh_button.pack(pady=5)
+    # Liaison de l'événement de sélection pour rafraîchir automatiquement la liste
+    personnel_list.bind("<<ListboxSelect>>", refresh)
 
     def show_lesson_details_personnel(event):
         try:
-            lessons = get_student_lessons(personnels[personnel_list.curselection()[0]][0])
-            index = listbox.curselection()[0]
-            les = lessons[index]
+            index = personnel_list.curselection()[0]
+            personnel_id = personnels[index][0]
+            lessons = get_student_lessons(personnel_id)
+            listbox_index = listbox.curselection()[0]
+            les = lessons[listbox_index]
             courses = get_courses()
             course = next((c for c in courses if c[0] == les[3]), None)
             course_info = f"Formation : {course[4]}" if course else "Formation inconnue"
@@ -334,13 +455,13 @@ def create_get_lessons_by_personnel_page():
 
     listbox.bind("<<ListboxSelect>>", show_lesson_details_personnel)
 
-    # Bouton pour supprimer le lien (supprimer la participation)
     def remove_link():
         try:
-            personnel_id = personnels[personnel_list.curselection()[0]][0]
+            index = personnel_list.curselection()[0]
+            personnel_id = personnels[index][0]
             lessons = get_student_lessons(personnel_id)
-            index = listbox.curselection()[0]
-            link_id = lessons[index][0]
+            listbox_index = listbox.curselection()[0]
+            link_id = lessons[listbox_index][0]
             remove_student_lesson(link_id)
             refresh()
             messagebox.showinfo("Succès", "La relation a été supprimée.")
@@ -349,9 +470,6 @@ def create_get_lessons_by_personnel_page():
 
     remove_button = tk.Button(frame, text="Supprimer la séance sélectionnée", command=remove_link)
     remove_button.pack(pady=5)
-
-    personnel_submit = tk.Button(frame, text='Afficher les séances', command=refresh)
-    personnel_submit.pack(pady=10)
 
     notebook.add(frame, text="Voir les séances par personnel")
 
@@ -382,7 +500,7 @@ def create_add_student_page():
         student_name_entry.delete(0, tk.END)
         student_identification_entry.delete(0, tk.END)
         status_label.config(text="Personnel ajouté avec succès !")
-        refresh_get_courses_page()  # Pour actualiser les listes dépendantes
+        refresh_get_courses_page()
         
     student_submit = tk.Button(frame, text='Ajouter le personnel', command=submit_student)
     student_submit.pack(pady=10)
@@ -435,12 +553,10 @@ def create_add_course_page():
     course_submit = tk.Button(frame, text='Ajouter la formation', command=submit_course)
     course_submit.pack(pady=10)
 
-    # Lorsqu'on sélectionne cet onglet, on peut le rafraîchir
     notebook.add(frame, text="Ajouter une formation")
 
 #####################################
-# PAGE : Affichage des formations et possibilité de suppression
-# + affichage des détails lors de la sélection
+# PAGE : Affichage des formations avec possibilité de suppression et détails
 #####################################
 def create_get_courses_page():
     frame = tk.Frame(notebook)
@@ -456,10 +572,13 @@ def create_get_courses_page():
         listbox.delete(0, tk.END)
         courses = get_courses()
         for course in courses:
-            listbox.insert(tk.END, course[4])  # nom de la formation
-        detail_label.config(text="")  # on efface les détails
-    refresh_button = tk.Button(frame, text="Refresh", command=refresh)
-    refresh_button.pack(pady=5)
+            listbox.insert(tk.END, course[4])
+        detail_label.config(text="")
+
+    # Attacher la fonction refresh au frame pour un appel externe
+    frame.refresh = refresh
+    # Rafraîchissement à l'ouverture initiale de l'onglet
+    refresh()
 
     def remove_selected():
         courses = get_courses()
@@ -470,7 +589,7 @@ def create_get_courses_page():
             messagebox.showinfo("Succès", "Formation supprimée avec succès !")
         except IndexError:
             messagebox.showerror("Erreur", "Sélectionnez une formation à supprimer.")
-    
+
     course_remove_button = tk.Button(frame, text='Supprimer la formation', command=remove_selected)
     course_remove_button.pack(pady=10)
 
@@ -485,15 +604,7 @@ def create_get_courses_page():
             detail_label.config(text="")
 
     listbox.bind("<<ListboxSelect>>", show_course_details)
-
     notebook.add(frame, text="Voir les formations")
-
-def refresh_get_courses_page():
-    page = frames.get('get_courses')
-    if page:
-        for child in page.winfo_children():
-            if isinstance(child, tk.Button) and child.cget("text")=="Refresh":
-                child.invoke()
 
 #####################################
 # PAGE : Affichage des personnels avec détails
@@ -514,8 +625,10 @@ def create_get_students_page():
         students = get_students()
         for stud in students:
             listbox.insert(tk.END, f"{stud[2]} (ID: {stud[1]})")
-    refresh_button = tk.Button(frame, text="Refresh", command=refresh)
-    refresh_button.pack(pady=5)
+    # Attacher la fonction refresh au frame pour qu'elle puisse être appelée depuis on_tab_changed
+    frame.refresh = refresh
+    # Rafraîchissement à l'ouverture initiale de l'onglet
+    refresh()
 
     def show_student_details(event):
         students = get_students()
@@ -528,21 +641,18 @@ def create_get_students_page():
             detail_label.config(text="")
 
     listbox.bind("<<ListboxSelect>>", show_student_details)
-
     notebook.add(frame, text="Voir le personnel")
 
-# Lors du changement d'onglet, on rafraîchit automatiquement la page si besoin
 def on_tab_changed(event):
     selected_tab = event.widget.select()
     frame = event.widget.nametowidget(selected_tab)
-    # Si la page possède un bouton "Refresh", on l'invoque
-    for child in frame.winfo_children():
-        if isinstance(child, tk.Button) and child.cget("text") == "Refresh":
-            child.invoke()
-
+    if hasattr(frame, "refresh"):
+        frame.refresh()
 notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
 
-# Création de toutes les pages (chaque page est ajoutée en tant qu'onglet)
+#####################################
+# Création des pages
+#####################################
 create_add_lesson_page()
 create_add_student_page()
 create_add_course_page()
