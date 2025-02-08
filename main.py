@@ -10,7 +10,6 @@ def main():
     app.mainloop()
     model.close()
 
-#Commentaire
 if __name__ == '__main__':
     main()
 
