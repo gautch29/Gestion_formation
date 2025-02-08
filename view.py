@@ -14,6 +14,8 @@ def get_default_date():
 # ============================================================================
 # Page : Ajouter une séance
 # ============================================================================
+# Dans la classe AddLessonPage (dans view.py)
+
 class AddLessonPage(tb.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, padding=20)
@@ -21,45 +23,46 @@ class AddLessonPage(tb.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        # Ligne 0 : Date de la séance (simple Entry)
+        # Ligne 0 : Date de la séance (ici on utilise un Entry pour simplifier)
         tb.Label(self, text="Date de la séance:", font=("Segoe UI", 12, "bold"))\
             .grid(row=0, column=0, sticky="w", padx=5, pady=5)
         date_frame = tk.Frame(self)
         date_frame.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
         self.date_entry = tb.Entry(date_frame, font=("Segoe UI", 12))
         self.date_entry.pack(fill="x")
-        self.date_entry.insert(0, get_default_date())
-
+        self.date_entry.insert(0, date.today().strftime("%d/%m/%Y"))
+        
         # Ligne 1 : Formation de la séance
         tb.Label(self, text="Formation de la séance:", font=("Segoe UI", 12, "bold"))\
             .grid(row=1, column=0, sticky="w", padx=5, pady=5)
         self.formation_combo = tb.Combobox(self, state="readonly", font=("Segoe UI", 12))
         self.formation_combo.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
-
+        
         # Ligne 2 : Professeur de la séance
         tb.Label(self, text="Professeur de la séance:", font=("Segoe UI", 12, "bold"))\
             .grid(row=2, column=0, sticky="w", padx=5, pady=5)
         self.teacher_combo = tb.Combobox(self, state="readonly", font=("Segoe UI", 12))
         self.teacher_combo.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
-
+        
         # Ligne 3 : Sélection des participants
         tb.Label(self, text="Sélectionnez les participants:", font=("Segoe UI", 12, "bold"))\
             .grid(row=3, column=0, sticky="nw", padx=5, pady=5)
         self.participants_listbox = Listbox(self, selectmode="multiple", height=6, font=("Segoe UI", 12))
         self.participants_listbox.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
-
+        
         # Ligne 4 : Message de confirmation
         self.status_label = tb.Label(self, text="", bootstyle="success", font=("Segoe UI", 12))
         self.status_label.grid(row=4, column=0, columnspan=2, pady=5)
-
+        
         # Ligne 5 : Bouton soumettre
         btn = tb.Button(self, text="Ajouter la séance", command=self.submit_lesson, bootstyle="primary")
         btn.grid(row=5, column=0, columnspan=2, pady=10, sticky="ew")
-
+        
         self.columnconfigure(1, weight=1)
         self.refresh_combos()
 
     def refresh_combos(self):
+        # Mise à jour des listes depuis la BDD via le contrôleur
         courses = self.controller_obj.get_courses()
         self.courses = courses
         self.formation_combo['values'] = [course[4] for course in courses]
@@ -72,9 +75,12 @@ class AddLessonPage(tb.Frame):
         for t in teachers:
             self.participants_listbox.insert("end", f"{t[2]} (ID: {t[1]})")
 
+    # Nouvelle méthode refresh qui sera appelée automatiquement lors du changement d'onglet
+    def refresh(self):
+        self.refresh_combos()
+
     def submit_lesson(self):
         try:
-            # On récupère la date saisie dans le champ Entry
             lesson_date = self.date_entry.get().strip()
             formation_index = self.formation_combo.current()
             teacher_index = self.teacher_combo.current()
@@ -98,6 +104,7 @@ class AddLessonPage(tb.Frame):
                 messagebox.showerror("Erreur", "Erreur lors de l'ajout de la séance.")
         except Exception as e:
             messagebox.showerror("Erreur", str(e))
+
 
 # ============================================================================
 # Page : Voir les séances par date
