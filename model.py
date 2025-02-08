@@ -1,4 +1,3 @@
-import sqlite3
 import psycopg2
 import logging
 
@@ -6,7 +5,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class Database:
     def __init__(self, db_file='bdd_formations.db'):
-        #self.conn = sqlite3.connect(db_file)
         self.conn = psycopg2.connect(database="formations_gendarmerie",
                         host="82.64.31.40",
                         user="gauthier",
