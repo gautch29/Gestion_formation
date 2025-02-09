@@ -72,3 +72,18 @@ class Controller:
 
     def get_lessons_by_module(self, course_id):
         return self.model.get_lessons_by_module(course_id)
+    
+    # Méthodes de mise à jour
+    def update_course(self, course_id, course_name, course_code, course_description, course_duration):
+        try:
+            self.model.update_course(course_id, course_name, course_code, course_description, course_duration)
+            return True
+        except Exception:
+            return False
+
+    def update_student(self, student_id, student_name, student_identification):
+        try:
+            self.model.update_student(student_id, student_name, student_identification)
+            return True
+        except Exception:
+            return False

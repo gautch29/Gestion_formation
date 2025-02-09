@@ -1,10 +1,15 @@
 # view.py
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-from datetime import date
+from datetime import datetime, date
 from tkinter import Listbox, messagebox
 import tkinter as tk
 from PIL import Image, ImageTk 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
 
 # ------------------------------------------------------------------------------
 # Fonction utilitaire pour obtenir une date par défaut sous forme de chaîne
@@ -461,7 +466,7 @@ class GetCoursesPage(tb.Frame):
             duration_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
             duration_entry.grid(row=3, column=1, padx=5, pady=5)
             duration_entry.insert(0, str(course[3]))
-            
+
             def save_changes():
                 new_name = name_entry.get().strip()
                 new_code = code_entry.get().strip()
@@ -469,21 +474,21 @@ class GetCoursesPage(tb.Frame):
                 try:
                     new_duration = int(duration_entry.get().strip())
                 except ValueError:
-                    tk.messagebox.showwarning("Champ invalide", "La durée doit être un nombre.")
+                    messagebox.showwarning("Champ invalide", "La durée doit être un nombre.")
                     return
                 if new_name and new_code and new_desc:
                     if self.controller_obj.update_course(course[0], new_name, new_code, new_desc, new_duration):
-                        tk.messagebox.showinfo("Succès", "Formation mise à jour avec succès.")
+                        messagebox.showinfo("Succès", "Formation mise à jour avec succès.")
                         self.refresh()
-                        edit_win.destroy()  # ferme le popup
+                        edit_win.destroy()  # Ferme le popup
                     else:
-                        tk.messagebox.showerror("Erreur", "La modification a échoué.")
+                        messagebox.showerror("Erreur", "La modification a échoué.")
                 else:
-                    tk.messagebox.showwarning("Champ manquant", "Veuillez remplir tous les champs.")
+                    messagebox.showwarning("Champ manquant", "Veuillez remplir tous les champs.")
             btn_save = tb.Button(edit_win, text="Enregistrer", command=save_changes, bootstyle="primary")
             btn_save.grid(row=4, column=0, columnspan=2, pady=10)
         except IndexError:
-            tk.messagebox.showerror("Erreur", "Aucune formation sélectionnée.")
+            messagebox.showerror("Erreur", "Aucune formation sélectionnée.")
 
 # ==============================================================================
 # Page : Voir le personnel (GetStudentsPage)
@@ -573,23 +578,23 @@ class GetStudentsPage(tb.Frame):
             ident_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
             ident_entry.grid(row=1, column=1, padx=5, pady=5)
             ident_entry.insert(0, student[1])
-            
+
             def save_changes():
                 new_name = name_entry.get().strip()
                 new_ident = ident_entry.get().strip()
                 if new_name and new_ident:
                     if self.controller_obj.update_student(student[0], new_name, new_ident):
-                        tb.messagebox.showinfo("Succès", "Personnel mis à jour avec succès.")
+                        messagebox.showinfo("Succès", "Personnel mis à jour avec succès.")
                         self.refresh()
-                        edit_win.destroy()  # ferme le popup
+                        edit_win.destroy()  # Ferme le popup
                     else:
-                        tb.messagebox.showerror("Erreur", "La modification a échoué.")
+                        messagebox.showerror("Erreur", "La modification a échoué.")
                 else:
-                    tb.messagebox.showwarning("Champ manquant", "Veuillez remplir tous les champs.")
+                    messagebox.showwarning("Champ manquant", "Veuillez remplir tous les champs.")
             btn_save = tb.Button(edit_win, text="Enregistrer", command=save_changes, bootstyle="primary")
             btn_save.grid(row=2, column=0, columnspan=2, pady=10)
         except IndexError:
-            tb.messagebox.showerror("Erreur", "Aucun personnel sélectionné.")
+            messagebox.showerror("Erreur", "Aucun personnel sélectionné.")
 
 # ==============================================================================
 # Page : Recherche par module (GetLessonsByModulePage)
@@ -718,6 +723,11 @@ class SearchMenuPage(tb.Frame):
                          command=lambda: self.navigator.show_frame("GetLessonsByModulePage"),
                          bootstyle="primary")
         btn3.pack(fill="x", pady=5)
+        # Nouveau bouton pour afficher le tableau croisé
+        btn4 = tb.Button(self, text="Tableau croisé formations/personal",
+                         command=lambda: self.navigator.show_frame("CrossTabPage"),
+                         bootstyle="primary")
+        btn4.pack(fill="x", pady=5)
 
 # ==============================================================================
 # Page : Menu Administration (accueille quatre boutons)
@@ -748,6 +758,123 @@ class AdminMenuPage(tb.Frame):
                          command=lambda: self.navigator.show_frame("AddCoursePage"),
                          bootstyle="primary")
         btn4.pack(fill="x", pady=5)
+
+# ==============================================================================
+# Page : Tableau croisé formations / personnel (CrossTabPage)
+# ==============================================================================
+class CrossTabPage(tb.Frame):
+    def __init__(self, parent, controller, navigator=None):
+        super().__init__(parent, padding=20)
+        self.controller_obj = controller
+        self.navigator = navigator
+        self.create_widgets()
+        self.back_target = "SearchMenuPage"  # retour vers le menu recherche
+
+    def create_widgets(self):
+        tb.Label(self, text="Tableau de suivi de formation",
+                 font=("Segoe UI", 16, "bold")).pack(pady=10)
+        # Zone de sélection multiple pour le personnel
+        selection_frame = tb.Frame(self)
+        selection_frame.pack(fill="x", pady=5)
+        tb.Label(selection_frame, text="Sélectionnez les personnels :", font=("Segoe UI", 12)).pack(anchor="w")
+        self.personnel_listbox = tk.Listbox(selection_frame, selectmode="extended", font=("Segoe UI", 12))
+        self.personnel_listbox.pack(fill="x", padx=5, pady=5)
+        self.refresh_personnel_list()
+        # Bouton pour générer le PDF
+        btn_generate = tb.Button(self, text="Générer le PDF",
+                                 command=self.generate_table, bootstyle="primary")
+        btn_generate.pack(pady=10)
+
+    def refresh_personnel_list(self):
+        # Récupération de la liste des personnels
+        self.all_personnels = self.controller_obj.get_students()
+        self.personnel_listbox.delete(0, tk.END)
+        for pers in self.all_personnels:
+            # Affichage : Nom (ID)
+            self.personnel_listbox.insert(tk.END, f"{pers[2]} (ID: {pers[1]})")
+
+    def generate_table(self):
+        # Récupérer les personnels sélectionnés
+        selected_indices = self.personnel_listbox.curselection()
+        if not selected_indices:
+            messagebox.showwarning("Avertissement", "Sélectionnez au moins un personnel.")
+            return
+        selected_personnels = [self.all_personnels[i] for i in selected_indices]
+        # Récupérer toutes les formations et tous les personnels (pour les lessons)
+        courses = self.controller_obj.get_courses()
+        all_students = self.controller_obj.get_students()
+
+        # Construction des données du tableau (ligne d'en-tête + lignes de données)
+        table_data = []
+        header = [""]
+        for course in courses:
+            header.append(course[4])
+        table_data.append(header)
+        
+        for pers in selected_personnels:
+            row = [pers[2]]  # première colonne : nom du personnel
+            personnel_id = pers[0]
+            lessons = self.controller_obj.get_student_lessons(personnel_id)
+            course_dict = {}
+            for les in lessons:
+                c_id = les[3]
+                teacher = next((t for t in all_students if t[0] == les[4]), None)
+                teacher_str = teacher[2] if teacher else "Inconnu"
+                infos = f"{les[2]}\n({teacher_str})"
+                course_dict.setdefault(c_id, []).append(infos)
+            for course in courses:
+                if course[0] in course_dict:
+                    content = "\n---\n".join(course_dict[course[0]])
+                else:
+                    content = "Non effectué"
+                row.append(content)
+            table_data.append(row)
+
+        # Configuration du PDF en portrait avec nom de fichier incluant date et heure
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pdf_filename = f"tableau_suivi_formation_{now}.pdf"
+        doc = SimpleDocTemplate(pdf_filename, pagesize=A4,
+                                leftMargin=20, rightMargin=20,
+                                topMargin=20, bottomMargin=20)
+        styles = getSampleStyleSheet()
+        elements = []
+
+        # En-tête du document
+        title = Paragraph("Tableau de suivi de formation", styles["Title"])
+        generation_date = Paragraph("Date de génération : " + date.today().strftime("%d/%m/%Y"), styles["Normal"])
+        elements.append(title)
+        elements.append(Spacer(1, 12))
+        elements.append(generation_date)
+        elements.append(Spacer(1, 24))
+        
+        # Création de la table ReportLab
+        table = Table(table_data, repeatRows=1, hAlign="CENTER")
+        style = TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            ("TOPPADDING", (0, 0), (-1, 0), 6)
+        ])
+        # Appliquer des couleurs spécifiques aux cellules en fonction du contenu
+        for row_idx in range(1, len(table_data)):
+            for col_idx in range(1, len(table_data[row_idx])):
+                cell_text = table_data[row_idx][col_idx]
+                if "Non effectué" in cell_text:
+                    style.add("BACKGROUND", (col_idx, row_idx), (col_idx, row_idx), colors.salmon)
+                else:
+                    style.add("BACKGROUND", (col_idx, row_idx), (col_idx, row_idx), colors.lightgreen)
+        table.setStyle(style)
+        elements.append(table)
+
+        try:
+            doc.build(elements)
+            messagebox.showinfo("Succès", f"Le PDF a été généré : {pdf_filename}")
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Une erreur est survenue lors de la génération du PDF : {e}")
 
 # ==============================================================================
 # Fenêtre principale
@@ -791,6 +918,7 @@ class MainView(tb.Window):
         self.frames["GetStudentsPage"] = GetStudentsPage(container, self.controller_obj, self)
         self.frames["GetCoursesPage"] = GetCoursesPage(container, self.controller_obj, self)
         self.frames["AddCoursePage"] = AddCoursePage(container, self.controller_obj, self)
+        self.frames["CrossTabPage"] = CrossTabPage(container, self.controller_obj, self)
 
         # Définition des cibles de retour (back_target) pour les pages détaillées
         self.frames["AddLessonPage"].back_target = "MainMenuPage"
@@ -803,6 +931,7 @@ class MainView(tb.Window):
         self.frames["AddCoursePage"].back_target = "AdminMenuPage"
         self.frames["SearchMenuPage"].back_target = "MainMenuPage"
         self.frames["AdminMenuPage"].back_target = "MainMenuPage"
+        self.frames["CrossTabPage"].back_target = "SearchMenuPage"
 
         # Positionnement de toutes les pages dans le même container
         for frame in self.frames.values():
