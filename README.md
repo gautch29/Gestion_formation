@@ -1,5 +1,3 @@
----
-
 # Guide d'Utilisation de l'Application de Gestion des Séances de Formation
 
 Bienvenue dans l'application de gestion des séances de formation. Ce logiciel vous permet de gérer vos formations, le personnel concerné, les séances de formation ainsi que de générer des rapports au format PDF. Grâce à une interface graphique intuitive, vous pourrez :
