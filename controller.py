@@ -69,3 +69,6 @@ class Controller:
 
     def get_lesson_participants(self, lesson_id):
         return self.model.get_lesson_participants(lesson_id)
+
+    def get_lessons_by_module(self, course_id):
+        return self.model.get_lessons_by_module(course_id)

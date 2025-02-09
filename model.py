@@ -123,6 +123,10 @@ class Database:
                           WHERE sl.lesson_id = ?''', (lesson_id,))
         return self.c.fetchall()
 
+    def get_lessons_by_module(self, course_id):
+        self.c.execute('''SELECT * FROM lessons WHERE lesson_course_id = ?''', (course_id,))
+        return self.c.fetchall()
+
     # Méthodes de suppression
     def remove_course(self, course_id):
         try:
