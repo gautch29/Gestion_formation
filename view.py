@@ -4,6 +4,7 @@ from ttkbootstrap.constants import *
 from datetime import date
 from tkinter import Listbox, messagebox
 import tkinter as tk
+from PIL import Image, ImageTk 
 
 # ------------------------------------------------------------------------------
 # Fonction utilitaire pour obtenir une date par défaut sous forme de chaîne
@@ -758,13 +759,25 @@ class MainView(tb.Window):
         self.title("Gestion des séances de formation")
         self.geometry("500x600")
         
+        # En-tête global affichant le logo sur toutes les pages
+        header_frame = tb.Frame(self, padding=10)
+        header_frame.pack(side="top", fill="x")
+        try:
+            logo = Image.open("LOGO_PIGR.jpeg")  # Assurez-vous que le fichier logo.jpeg est dans le dossier racine du projet
+            logo = logo.resize((80, 80), Image.LANCZOS)
+            self.logo_image = ImageTk.PhotoImage(logo)
+            logo_label = tb.Label(header_frame, image=self.logo_image)
+            logo_label.pack(side="left", padx=10)
+        except Exception as e:
+            print("Erreur lors du chargement du logo :", e)
+        
         # Bouton global "Retour" (affiché lorsque la page courante définit un back_target)
         self.back_button = tb.Button(self, text="Retour", command=self.go_back, bootstyle="secondary")
         self.back_button.pack_forget()  # Masqué initialement
 
         container = tb.Frame(self, padding=10)
         container.pack(fill="both", expand=True)
-
+        
         self.frames = {}
         # Création de toutes les pages en passant "self" comme navigateur
         self.frames["MainMenuPage"] = MainMenuPage(container, self.controller_obj, self)
@@ -797,7 +810,7 @@ class MainView(tb.Window):
 
         self.current_frame = None
         self.show_frame("MainMenuPage")
-
+        
     def show_frame(self, page_name):
         frame = self.frames[page_name]
         frame.tkraise()
@@ -812,13 +825,3 @@ class MainView(tb.Window):
     def go_back(self):
         if self.current_frame and hasattr(self.frames[self.current_frame], "back_target"):
             self.show_frame(self.frames[self.current_frame].back_target)
-
-# ==============================================================================
-# Pour lancer l'application (exemple d'utilisation)
-# ==============================================================================
-if __name__ == "__main__":
-    # Supposons que "controller" soit l'objet contrôleur de votre application
-    # Vous devez adapter cet objet à votre logique métier.
-    controller = None  # Remplacez par votre instance de contrôleur
-    app = MainView(controller)
-    app.mainloop()
