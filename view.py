@@ -83,11 +83,9 @@ class AddLessonPage(tb.Frame):
         for t in sorted_participants:
             self.participants_listbox.insert("end", f"{t[2]} (ID: {t[1]})")
 
-        # Tri des participants par ordre alphabétique (sur le nom)
-        sorted_participants = sorted(teachers, key=lambda t: t[2].lower())
-        self.participants_listbox.delete(0, "end")
-        for t in sorted_participants:
-            self.participants_listbox.insert("end", f"{t[2]} (ID: {t[1]})")
+        # (Double tri supprimé car redondant)
+        # for t in sorted_participants:
+        #     self.participants_listbox.insert("end", f"{t[2]} (ID: {t[1]})")
 
     def refresh(self):
         self.refresh_combos()
@@ -684,7 +682,16 @@ class MainMenuPage(tb.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        tb.Label(self, text="Menu Principal", font=("Segoe UI", 16, "bold")).pack(pady=10)
+        # Utilisation d'un tk.Label classique pour le titre avec un fond sombre
+        title_label = tk.Label(
+            self,
+            text="Menu Principal",
+            font=("Segoe UI", 20, "bold"),
+            bg="#000000",      # Fond noir (à adapter selon votre logo)
+            fg="white"         # Texte blanc
+        )
+        title_label.pack(pady=10)
+
         btn1 = tb.Button(self, text="Nouvelle séance",
                          command=lambda: self.navigator.show_frame("AddLessonPage"),
                          bootstyle="primary")
@@ -884,19 +891,11 @@ class MainView(tb.Window):
         super().__init__(themename="flatly")
         self.controller_obj = controller
         self.title("Gestion des séances de formation")
-        self.geometry("500x600")
-        
-        # En-tête global affichant le logo sur toutes les pages
-        header_frame = tb.Frame(self, padding=10)
-        header_frame.pack(side="top", fill="x")
-        try:
-            logo = Image.open("LOGO_PIGR.jpeg")  # Assurez-vous que le fichier logo.jpeg est dans le dossier racine du projet
-            logo = logo.resize((80, 80), Image.LANCZOS)
-            self.logo_image = ImageTk.PhotoImage(logo)
-            logo_label = tb.Label(header_frame, image=self.logo_image)
-            logo_label.pack(side="left", padx=10)
-        except Exception as e:
-            print("Erreur lors du chargement du logo :", e)
+        self.geometry("500x500")
+        self.resizable(False, False) 
+
+        # Suppression de l'en-tête avec le logo (ceci ne sera plus affiché en haut)
+        # À la place, le logo sera affiché en arrière-plan sur chaque page.
         
         # Bouton global "Retour" (affiché lorsque la page courante définit un back_target)
         self.back_button = tb.Button(self, text="Retour", command=self.go_back, bootstyle="secondary")
@@ -936,6 +935,32 @@ class MainView(tb.Window):
         # Positionnement de toutes les pages dans le même container
         for frame in self.frames.values():
             frame.grid(row=0, column=0, sticky="nsew")
+            # Ajout du logo en arrière-plan sur chaque page.
+            try:
+                # Le logo est centré dans la page
+                bg_label = tk.Label(frame, image=None)
+                # Si le logo n'a pas encore été chargé, nous le chargerons ci-dessous.
+                bg_label.place(relx=0, rely=0, relwidth=1, relheight=1)
+                bg_label.lower()
+                frame.bg_label = bg_label  # Sauvegarde du label dans l'instance pour éviter la collecte de garbage
+            except Exception as e:
+                print("Erreur lors de l'ajout du background :", e)
+
+        # Chargement du logo (filigrane) à utiliser en arrière-plan sur chaque page
+        try:
+            logo = Image.open("LOGO_PIGR.jpeg")
+            # Redimensionnement du logo (ici, 500x500 comme dans l'ancienne version)
+            logo = logo.resize((300, 300), Image.LANCZOS)
+            self.logo_image = ImageTk.PhotoImage(logo)
+        except Exception as e:
+            print("Erreur lors du chargement du logo :", e)
+            self.logo_image = None
+
+        # Application du logo en arrière-plan sur chaque page (le label a été créé plus haut)
+        if self.logo_image is not None:
+            for frame in self.frames.values():
+                if hasattr(frame, 'bg_label'):
+                    frame.bg_label.config(image=self.logo_image)
 
         self.current_frame = None
         self.show_frame("MainMenuPage")
