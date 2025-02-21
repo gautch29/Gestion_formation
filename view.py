@@ -28,7 +28,7 @@ class AddLessonPage(tb.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        # Ligne 0 : Date de la séance (Entry simple)
+        # Ligne 0 : Date de la séance
         tb.Label(self, text="Date de la séance:", font=("Segoe UI", 12, "bold"))\
             .grid(row=0, column=0, sticky="w", padx=5, pady=5)
         date_frame = tk.Frame(self)
@@ -67,28 +67,23 @@ class AddLessonPage(tb.Frame):
         self.refresh_combos()
 
     def refresh_combos(self):
-        # Mise à jour des listes depuis la BDD via le contrôleur
         courses = self.controller_obj.get_courses()
         self.courses = courses
-        # Afficher "Le code de la formation - nom de la formation"
         self.formation_combo['values'] = [f"{course[1]} - {course[4]}" for course in courses]
 
         teachers = self.controller_obj.get_students()
         self.teachers = teachers
-        self.teacher_combo['values'] = [f"{t[2]} (ID: {t[1]})" for t in teachers]
+        # Afficher : Prénom + Nom de famille (ID: xxxx)
+        self.teacher_combo['values'] = [f"{t[2]} {t[4]} (ID: {t[1]})" for t in teachers]
 
-        # Tri des participants par ordre alphabétique (sur le nom)
         sorted_participants = sorted(teachers, key=lambda t: t[2].lower())
         self.participants_listbox.delete(0, "end")
         for t in sorted_participants:
-            self.participants_listbox.insert("end", f"{t[2]} (ID: {t[1]})")
-
-        # (Double tri supprimé car redondant)
-        # for t in sorted_participants:
-        #     self.participants_listbox.insert("end", f"{t[2]} (ID: {t[1]})")
-
-    def refresh(self):
-        self.refresh_combos()
+            # Afficher : Prénom + Nom de famille (ID: xxxx, Peloton: xxxx)
+            self.participants_listbox.insert(
+                "end",
+                f"{t[2]} {t[4]} (ID: {t[1]}, Peloton: {t[5]})"
+            )
 
     def submit_lesson(self):
         try:
@@ -98,21 +93,17 @@ class AddLessonPage(tb.Frame):
             selected_indices = self.participants_listbox.curselection()
 
             if formation_index == -1 or teacher_index == -1 or not selected_indices:
-                raise ValueError("Veuillez sélectionner tous les éléments requis.")
+                self.status_label.config(text="Veuillez remplir tous les champs.", bootstyle="danger")
+                return
 
             result = self.controller_obj.add_lesson(
                 lesson_date, formation_index, teacher_index, selected_indices,
                 self.courses, self.teachers
             )
             if result:
-                self.status_label.config(text="Séance ajoutée avec succès !")
-                messagebox.showinfo("Succès", "La séance a été ajoutée avec succès !")
-                self.formation_combo.set('')
-                self.teacher_combo.set('')
-                self.participants_listbox.selection_clear(0, "end")
-                self.refresh_combos()
+                self.status_label.config(text="Séance ajoutée avec succès.", bootstyle="success")
             else:
-                messagebox.showerror("Erreur", "Erreur lors de l'ajout de la séance.")
+                self.status_label.config(text="Erreur lors de l'ajout de la séance.", bootstyle="danger")
         except Exception as e:
             messagebox.showerror("Erreur", str(e))
 
@@ -229,7 +220,7 @@ class GetLessonsByPersonnelPage(tb.Frame):
         self.personnel_list.delete(0, "end")
         self.personnels = self.controller_obj.get_students()
         for pers in self.personnels:
-            self.personnel_list.insert("end", f"{pers[2]} (ID: {pers[1]})")
+            self.personnel_list.insert("end", f"{pers[2]} {pers[4]} (ID: {pers[1]}, Peloton: {pers[5]})")
 
     def refresh_lessons(self, event=None):
         self.listbox.delete(0, "end")
@@ -289,34 +280,58 @@ class AddStudentPage(tb.Frame):
         self.controller_obj = controller
         self.navigator = navigator
         self.create_widgets()
-
+        
     def create_widgets(self):
-        tb.Label(self, text="Nom du personnel:", font=("Segoe UI", 12, "bold"))\
-            .grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        self.student_name_entry = tb.Entry(self, font=("Segoe UI", 12))
-        self.student_name_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+        # Identification
         tb.Label(self, text="Identification:", font=("Segoe UI", 12, "bold"))\
+            .grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.ident_entry = tb.Entry(self, font=("Segoe UI", 12))
+        self.ident_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+
+        # Prénom
+        tb.Label(self, text="Prénom:", font=("Segoe UI", 12, "bold"))\
             .grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        self.student_identification_entry = tb.Entry(self, font=("Segoe UI", 12))
-        self.student_identification_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+        self.prenom_entry = tb.Entry(self, font=("Segoe UI", 12))
+        self.prenom_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+
+        # Nom de famille
+        tb.Label(self, text="Nom de famille:", font=("Segoe UI", 12, "bold"))\
+            .grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        self.nomfam_entry = tb.Entry(self, font=("Segoe UI", 12))
+        self.nomfam_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+
+        # Peloton
+        tb.Label(self, text="Peloton:", font=("Segoe UI", 12, "bold"))\
+            .grid(row=3, column=0, sticky="w", padx=5, pady=5)
+        self.peloton_entry = tb.Entry(self, font=("Segoe UI", 12))
+        self.peloton_entry.grid(row=3, column=1, sticky="ew", padx=5, pady=5)
+
+        # Message de confirmation
         self.status_label = tb.Label(self, text="", bootstyle="success", font=("Segoe UI", 12))
-        self.status_label.grid(row=2, column=0, columnspan=2, pady=5)
+        self.status_label.grid(row=4, column=0, columnspan=2, pady=5)
+        
+        # Bouton d'ajout
         btn = tb.Button(self, text="Ajouter le personnel", command=self.submit_student, bootstyle="primary")
-        btn.grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")
+        btn.grid(row=5, column=0, columnspan=2, pady=10, sticky="ew")
+
         self.columnconfigure(1, weight=1)
 
     def submit_student(self):
-        name = self.student_name_entry.get()
-        ident = self.student_identification_entry.get()
-        if name and ident:
-            if self.controller_obj.add_student(name, ident):
-                self.student_name_entry.delete(0, "end")
-                self.student_identification_entry.delete(0, "end")
-                self.status_label.config(text="Personnel ajouté avec succès !")
-            else:
-                messagebox.showerror("Erreur", "Erreur lors de l'ajout du personnel.")
+        student_identification = self.ident_entry.get().strip()
+        prenom = self.prenom_entry.get().strip()
+        nom_de_famille = self.nomfam_entry.get().strip()
+        peloton = self.peloton_entry.get().strip()
+
+        if not (student_identification and prenom and nom_de_famille and peloton):
+            self.status_label.config(text="Veuillez remplir tous les champs.", bootstyle="danger")
+            return
+
+        # On enregistre le prénom dans "student_name" et le nom de famille dans "nom_de_famille"
+        result = self.controller_obj.add_student(prenom, student_identification, "", nom_de_famille, peloton)
+        if result:
+            self.status_label.config(text="Personnel ajouté avec succès.", bootstyle="success")
         else:
-            messagebox.showerror("Erreur", "Tous les champs doivent être remplis.")
+            self.status_label.config(text="Erreur lors de l'ajout du personnel.", bootstyle="danger")
 
 # ==============================================================================
 # Page : Ajouter une formation (AddCoursePage)
@@ -527,12 +542,17 @@ class GetStudentsPage(tb.Frame):
         self.columnconfigure(1, weight=1)
         self.refresh()
 
+    def tkraise(self, aboveThis=None):
+        self.refresh()  # Mise à jour de la liste dès que la page devient visible
+        super().tkraise(aboveThis)
+        
     def refresh(self):
         self.listbox.delete(0, "end")
         self.detail_label.config(text="")
         self.students = self.controller_obj.get_students()
         for stud in self.students:
-            self.listbox.insert("end", f"{stud[2]} (ID: {stud[1]})")
+            # Affichage : Prénom + Nom de famille (ID, Peloton)
+            self.listbox.insert("end", f"{stud[2]} {stud[4]} (ID: {stud[1]}, Peloton: {stud[5]})")
         self.btn_delete.grid_remove()
         self.btn_edit.grid_remove()
 
@@ -540,10 +560,13 @@ class GetStudentsPage(tb.Frame):
         try:
             index = self.listbox.curselection()[0]
             student = self.students[index]
-            details = f"Nom : {student[2]}\nIdentification : {student[1]}"
+            details = (f"Prénom : {student[2]}\n"
+                    f"Nom de famille : {student[4]}\n"
+                    f"Identification : {student[1]}\n"
+                    f"Peloton : {student[5]}")
             self.detail_label.config(text=details)
-            self.btn_delete.grid()  # affiche le bouton de suppression
-            self.btn_edit.grid()    # affiche le bouton de modification
+            self.btn_delete.grid()  # Affiche le bouton de suppression
+            self.btn_edit.grid()    # Affiche le bouton de modification
         except IndexError:
             self.detail_label.config(text="")
             self.btn_delete.grid_remove()
@@ -553,14 +576,15 @@ class GetStudentsPage(tb.Frame):
         try:
             index = self.listbox.curselection()[0]
             student = self.students[index]
-            if messagebox.askyesno("Confirmer", "Voulez-vous vraiment supprimer ce personnel et tous ses liens ?"):
-                if self.controller_obj.remove_student_and_links(student[0]):
-                    messagebox.showinfo("Succès", "Le personnel et ses liens ont été supprimés.")
-                    self.refresh()
+            confirm = messagebox.askyesno("Confirmation", "Voulez-vous vraiment supprimer ce personnel ?")
+            if confirm:
+                if self.controller_obj.remove_student(student[0]):
+                    messagebox.showinfo("Succès", "Personnel supprimé avec succès.")
+                    self.refresh()  # Rafraîchit la liste
                 else:
                     messagebox.showerror("Erreur", "La suppression a échoué.")
         except IndexError:
-            messagebox.showerror("Erreur", "Sélectionnez un personnel à supprimer.")
+            messagebox.showerror("Erreur", "Aucun personnel sélectionné.")
 
     def edit_selected_student(self):
         try:
@@ -568,29 +592,46 @@ class GetStudentsPage(tb.Frame):
             student = self.students[index]
             edit_win = tk.Toplevel(self)
             edit_win.title("Modifier le personnel")
-            tk.Label(edit_win, text="Nom :").grid(row=0, column=0, padx=5, pady=5)
-            name_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
-            name_entry.grid(row=0, column=1, padx=5, pady=5)
-            name_entry.insert(0, student[2])
-            tk.Label(edit_win, text="Identification :").grid(row=1, column=0, padx=5, pady=5)
+            
+            tk.Label(edit_win, text="Identification:", font=("Segoe UI", 12)).grid(row=0, column=0, padx=5, pady=5)
             ident_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
-            ident_entry.grid(row=1, column=1, padx=5, pady=5)
+            ident_entry.grid(row=0, column=1, padx=5, pady=5)
             ident_entry.insert(0, student[1])
-
+            
+            tk.Label(edit_win, text="Prénom:", font=("Segoe UI", 12)).grid(row=1, column=0, padx=5, pady=5)
+            prenom_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
+            prenom_entry.grid(row=1, column=1, padx=5, pady=5)
+            prenom_entry.insert(0, student[2])
+            
+            tk.Label(edit_win, text="Nom de famille:", font=("Segoe UI", 12)).grid(row=2, column=0, padx=5, pady=5)
+            nomfam_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
+            nomfam_entry.grid(row=2, column=1, padx=5, pady=5)
+            nomfam_entry.insert(0, student[4])
+            
+            tk.Label(edit_win, text="Peloton:", font=("Segoe UI", 12)).grid(row=3, column=0, padx=5, pady=5)
+            peloton_entry = tk.Entry(edit_win, font=("Segoe UI", 12))
+            peloton_entry.grid(row=3, column=1, padx=5, pady=5)
+            peloton_entry.insert(0, student[5])
+            
             def save_changes():
-                new_name = name_entry.get().strip()
                 new_ident = ident_entry.get().strip()
-                if new_name and new_ident:
-                    if self.controller_obj.update_student(student[0], new_name, new_ident):
+                new_prenom = prenom_entry.get().strip()
+                new_nomfam = nomfam_entry.get().strip()
+                new_peloton = peloton_entry.get().strip()
+                if new_ident and new_prenom and new_nomfam and new_peloton:
+                    # Mise à jour : on passe le prénom dans student_name et le nom de famille dans nom_de_famille
+                    if self.controller_obj.update_student(student[0], new_prenom, new_ident, "", new_nomfam, new_peloton):
                         messagebox.showinfo("Succès", "Personnel mis à jour avec succès.")
                         self.refresh()
-                        edit_win.destroy()  # Ferme le popup
+                        edit_win.destroy()
                     else:
                         messagebox.showerror("Erreur", "La modification a échoué.")
                 else:
                     messagebox.showwarning("Champ manquant", "Veuillez remplir tous les champs.")
+            
+            # Bouton d'enregistrement
             btn_save = tb.Button(edit_win, text="Enregistrer", command=save_changes, bootstyle="primary")
-            btn_save.grid(row=2, column=0, columnspan=2, pady=10)
+            btn_save.grid(row=4, column=0, columnspan=2, pady=10)
         except IndexError:
             messagebox.showerror("Erreur", "Aucun personnel sélectionné.")
 
@@ -793,12 +834,10 @@ class CrossTabPage(tb.Frame):
         btn_generate.pack(pady=10)
 
     def refresh_personnel_list(self):
-        # Récupération de la liste des personnels
         self.all_personnels = self.controller_obj.get_students()
         self.personnel_listbox.delete(0, tk.END)
         for pers in self.all_personnels:
-            # Affichage : Nom (ID)
-            self.personnel_listbox.insert(tk.END, f"{pers[2]} (ID: {pers[1]})")
+            self.personnel_listbox.insert(tk.END, f"{pers[2]} {pers[4]} (ID: {pers[1]})")
 
     def generate_table(self):
         # Récupérer les personnels sélectionnés
@@ -891,7 +930,7 @@ class MainView(tb.Window):
         super().__init__(themename="flatly")
         self.controller_obj = controller
         self.title("Gestion des séances de formation")
-        self.geometry("500x500")
+        self.geometry("500x600")
         self.resizable(False, False) 
 
         # Suppression de l'en-tête avec le logo (ceci ne sera plus affiché en haut)

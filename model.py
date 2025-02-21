@@ -14,37 +14,38 @@ class Database:
         try:
             # Création de la table des formations
             self.c.execute('''CREATE TABLE IF NOT EXISTS courses
-                              (course_id INTEGER PRIMARY KEY,
-                               course_code TEXT,
-                               course_description TEXT,
-                               course_duration INTEGER,
-                               course_name TEXT)''')
+                            (course_id INTEGER PRIMARY KEY,
+                            course_code TEXT,
+                            course_description TEXT,
+                            course_duration INTEGER,
+                            course_name TEXT)''')
             # Création de la table du personnel
             self.c.execute('''CREATE TABLE IF NOT EXISTS students
-                              (student_id INTEGER PRIMARY KEY,
-                               student_identification TEXT,
-                               student_name TEXT)''')
+                            (student_id INTEGER PRIMARY KEY,
+                            student_identification TEXT,
+                            student_name TEXT,
+                            nom TEXT,
+                            nom_de_famille TEXT,
+                            peloton TEXT)''')
             # Création de la table des séances
             self.c.execute('''CREATE TABLE IF NOT EXISTS lessons
-                              (lesson_id INTEGER PRIMARY KEY,
-                               lesson_date TEXT,
-                               lesson_course_id INTEGER,
-                               teacher_id INTEGER)''')
-            # Vérification (et ajout) de la colonne teacher_id si nécessaire
-            self.c.execute("PRAGMA table_info(lessons)")
+                            (lesson_id INTEGER PRIMARY KEY,
+                            lesson_date TEXT,
+                            lesson_course_id INTEGER,
+                            teacher_id INTEGER)''')
+            # Vérification (et ajout) des colonnes si nécessaire
+            self.c.execute("PRAGMA table_info(students)")
             columns = [col[1] for col in self.c.fetchall()]
-            if "teacher_id" not in columns:
-                self.c.execute("ALTER TABLE lessons ADD COLUMN teacher_id INTEGER")
-                self.conn.commit()
-            # Création de la table de liaison entre étudiants et séances
-            self.c.execute('''CREATE TABLE IF NOT EXISTS students_lessons
-                              (student_lesson_id INTEGER PRIMARY KEY,
-                               student_id INTEGER,
-                               lesson_id INTEGER)''')
+            if "nom" not in columns:
+                self.c.execute("ALTER TABLE students ADD COLUMN nom TEXT")
+            if "nom_de_famille" not in columns:
+                self.c.execute("ALTER TABLE students ADD COLUMN nom_de_famille TEXT")
+            if "peloton" not in columns:
+                self.c.execute("ALTER TABLE students ADD COLUMN peloton TEXT")
             self.conn.commit()
             logging.info("Base de données initialisée avec succès.")
         except Exception as e:
-            logging.error("Erreur lors de la création de la base de données : %s", e)
+                logging.error("Erreur lors de la création de la base de données : %s", e)
 
     # Méthodes d'insertion
     def add_course(self, course_name, course_code, course_description, course_duration):
@@ -59,10 +60,10 @@ class Database:
             logging.error("Erreur lors de l'ajout de la formation : %s", e)
             raise e
 
-    def add_student(self, student_name, student_identification):
+    def add_student(self, student_name, student_identification, nom, nom_de_famille, peloton):
         try:
-            self.c.execute('''INSERT INTO students (student_name, student_identification)
-                              VALUES (?, ?)''', (student_name, student_identification))
+            self.c.execute('''INSERT INTO students (student_name, student_identification, nom, nom_de_famille, peloton)
+                            VALUES (?, ?, ?, ?, ?)''', (student_name, student_identification, nom, nom_de_famille, peloton))
             self.conn.commit()
             logging.info("Personnel ajouté : %s", student_name)
             return self.c.lastrowid
@@ -139,9 +140,8 @@ class Database:
 
     def remove_student(self, student_id):
         try:
-            self.c.execute('''DELETE FROM students WHERE student_id = ?''', (student_id,))
+            self.c.execute("DELETE FROM students WHERE student_id=?", (student_id,))
             self.conn.commit()
-            logging.info("Personnel supprimé : %s", student_id)
         except Exception as e:
             logging.error("Erreur lors de la suppression du personnel : %s", e)
             raise e
@@ -189,12 +189,12 @@ class Database:
             logging.error("Erreur lors de la mise à jour de la formation : %s", e)
             raise e
 
-    def update_student(self, student_id, student_name, student_identification):
+    def update_student(self, student_id, student_name, student_identification, nom, nom_de_famille, peloton):
         try:
             self.c.execute('''UPDATE students
-                              SET student_name = ?, student_identification = ?
-                              WHERE student_id = ?''',
-                           (student_name, student_identification, student_id))
+                            SET student_name = ?, student_identification = ?, nom = ?, nom_de_famille = ?, peloton = ?
+                            WHERE student_id = ?''',
+                        (student_name, student_identification, nom, nom_de_famille, peloton, student_id))
             self.conn.commit()
             logging.info("Personnel %s mis à jour", student_id)
             return True

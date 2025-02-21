@@ -11,25 +11,23 @@ class Controller:
         except Exception:
             return False
 
-    def add_student(self, student_name, student_identification):
+    def add_student(self, student_name, student_identification, nom, nom_de_famille, peloton):
         try:
-            self.model.add_student(student_name, student_identification)
+            self.model.add_student(student_name, student_identification, nom, nom_de_famille, peloton)
             return True
         except Exception:
             return False
 
-    def add_lesson(self, lesson_date, formation_index, teacher_index, selected_participants_indices, courses, teachers):
+    def add_lesson(self, lesson_date, formation_index, teacher_index, selected_indices, courses, teachers):
         try:
-            if formation_index == -1 or teacher_index == -1 or not selected_participants_indices:
-                raise ValueError("Veuillez sélectionner tous les éléments requis.")
             lesson_course_id = courses[formation_index][0]
             teacher_id = teachers[teacher_index][0]
             lesson_id = self.model.add_lesson(lesson_date, lesson_course_id, teacher_id)
-            for index in selected_participants_indices:
-                participant_id = teachers[index][0]
-                self.model.add_student_lesson(participant_id, lesson_id)
+            for index in selected_indices:
+                student_id = teachers[index][0]
+                self.model.add_student_lesson(student_id, lesson_id)
             return True
-        except Exception:
+        except Exception as e:
             return False
 
     # Méthodes de suppression
@@ -50,6 +48,13 @@ class Controller:
     def remove_student_lesson(self, student_lesson_id):
         try:
             self.model.remove_student_lesson(student_lesson_id)
+            return True
+        except Exception:
+            return False
+        
+    def remove_student(self, student_id):
+        try:
+            self.model.remove_student(student_id)
             return True
         except Exception:
             return False
@@ -81,9 +86,9 @@ class Controller:
         except Exception:
             return False
 
-    def update_student(self, student_id, student_name, student_identification):
+    def update_student(self, student_id, student_name, student_identification, nom, nom_de_famille, peloton):
         try:
-            self.model.update_student(student_id, student_name, student_identification)
+            self.model.update_student(student_id, student_name, student_identification, nom, nom_de_famille, peloton)
             return True
         except Exception:
             return False
