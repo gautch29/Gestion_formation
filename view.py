@@ -9,7 +9,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-
+import os
 
 # ------------------------------------------------------------------------------
 # Fonction utilitaire pour obtenir une date par défaut sous forme de chaîne
@@ -987,7 +987,9 @@ class MainView(tb.Window):
 
         # Chargement du logo (filigrane) à utiliser en arrière-plan sur chaque page
         try:
-            logo = Image.open("LOGO_PIGR.jpeg")
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            logo_path = os.path.join(base_dir, "LOGO_PIGR.jpeg")
+            logo = Image.open(logo_path)
             # Redimensionnement du logo (ici, 500x500 comme dans l'ancienne version)
             logo = logo.resize((300, 300), Image.LANCZOS)
             self.logo_image = ImageTk.PhotoImage(logo)

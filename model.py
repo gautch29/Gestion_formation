@@ -1,12 +1,14 @@
 # model.py
 import sqlite3
 import logging
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+import os
+#logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Database:
     def __init__(self, db_file='bdd_formations.db'):
-        self.conn = sqlite3.connect(db_file)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        db_path = os.path.join(base_dir, db_file)
+        self.conn = sqlite3.connect(db_path)
         self.c = self.conn.cursor()
         self.create_database()
 
