@@ -7,7 +7,8 @@ import os
 class Database:
     def __init__(self, db_file='bdd_formations.db'):
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        db_path = os.path.join(base_dir, db_file)
+        db_path = db_file if os.path.isabs(db_file) else os.path.join(base_dir, db_file)
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.conn = sqlite3.connect(db_path)
         self.c = self.conn.cursor()
         self.create_database()
@@ -35,6 +36,11 @@ class Database:
                             lesson_date TEXT,
                             lesson_course_id INTEGER,
                             teacher_id INTEGER)''')
+            # Table de liaison entre personnel et seances suivies.
+            self.c.execute('''CREATE TABLE IF NOT EXISTS students_lessons
+                            (student_lesson_id INTEGER PRIMARY KEY,
+                            student_id INTEGER,
+                            lesson_id INTEGER)''')
             # Vérification (et ajout) des colonnes si nécessaire
             self.c.execute("PRAGMA table_info(students)")
             columns = [col[1] for col in self.c.fetchall()]
@@ -142,6 +148,7 @@ class Database:
 
     def remove_student(self, student_id):
         try:
+            self.c.execute("DELETE FROM students_lessons WHERE student_id=?", (student_id,))
             self.c.execute("DELETE FROM students WHERE student_id=?", (student_id,))
             self.conn.commit()
         except Exception as e:

@@ -1,15 +1,6 @@
-# main.py
-from model import Database
-from controller import Controller
-from view import MainView
+from web_app import create_app
 
-def main():
-    model = Database()
-    controller = Controller(model)
-    app = MainView(controller)
-    app.mainloop()
-    model.close()
+app = create_app()
 
 if __name__ == '__main__':
-    main()
-
+    app.run(host='0.0.0.0', port=8000)

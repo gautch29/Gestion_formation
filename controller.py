@@ -30,6 +30,15 @@ class Controller:
         except Exception as e:
             return False
 
+    def add_lesson_by_ids(self, lesson_date, course_id, teacher_id, participant_ids):
+        try:
+            lesson_id = self.model.add_lesson(lesson_date, course_id, teacher_id)
+            for student_id in participant_ids:
+                self.model.add_student_lesson(student_id, lesson_id)
+            return True
+        except Exception:
+            return False
+
     # Méthodes de suppression
     def remove_lesson_and_links(self, lesson_id):
         try:
@@ -68,6 +77,9 @@ class Controller:
 
     def get_lessons_date(self, lesson_date):
         return self.model.get_lessons_date(lesson_date)
+
+    def get_lessons(self):
+        return self.model.get_lessons()
 
     def get_student_lessons(self, student_id):
         return self.model.get_student_lessons(student_id)
