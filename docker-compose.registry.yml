@@ -1,0 +1,12 @@
+services:
+  gestion-formation:
+    image: ${GESTION_FORMATION_IMAGE:-ghcr.io/gautch29/gestion-formation:latest}
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_PATH: /app/data/bdd_formations.db
+    volumes:
+      - gestion-formation-data:/app/data
+
+volumes:
+  gestion-formation-data:
