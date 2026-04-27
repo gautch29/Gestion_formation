@@ -191,19 +191,16 @@ def create_app(database_path=None):
             flash("Seance supprimee.", "success")
         else:
             flash("La seance n'a pas pu etre supprimee.", "error")
-        return redirect(url_for("search_page"))
+        return redirect_to_search_filters()
 
     @app.post("/student-lessons/<int:student_lesson_id>/delete")
     def delete_student_lesson(student_lesson_id):
         controller = get_controller()
-        student_id = request.form.get("student_id", "")
         if controller.remove_student_lesson(student_lesson_id):
             flash("Lien de seance supprime.", "success")
         else:
             flash("Le lien de seance n'a pas pu etre supprime.", "error")
-        if student_id:
-            return redirect(url_for("search_page", student_id=student_id))
-        return redirect(url_for("search_page"))
+        return redirect_to_search_filters()
 
     @app.post("/reports/cross-tab")
     def report_cross_tab():
@@ -256,6 +253,15 @@ def render_app(controller, active_page, page_title, page_eyebrow, active_tab=Non
     )
 
 
+def redirect_to_search_filters():
+    args = {}
+    for key in ("date", "student_id", "course_id"):
+        value = request.form.get(key, "").strip()
+        if value:
+            args[key] = value
+    return redirect(url_for("search_page", **args))
+
+
 def parse_int(value):
     try:
         return int(value)
@@ -273,7 +279,7 @@ def build_context(controller):
     courses_by_id = {course["id"]: course for course in courses}
     students_by_id = {student["id"]: student for student in students}
 
-    date_filter = request.args.get("date", today_text()).strip() or today_text()
+    date_filter = request.args.get("date", "").strip()
     student_filter = parse_int(request.args.get("student_id"))
     course_filter = parse_int(request.args.get("course_id"))
 
@@ -283,33 +289,14 @@ def build_context(controller):
     ]
     recent_lessons = list(reversed(lessons[-6:]))
 
-    lessons_by_date = [
-        lesson_to_dict(row, controller, courses_by_id, students_by_id)
-        for row in controller.get_lessons_date(date_filter)
-    ]
-
-    lessons_by_student = []
-    if student_filter:
-        lessons_by_student = [
-            linked_lesson_to_dict(row, courses_by_id, students_by_id)
-            for row in controller.get_student_lessons(student_filter)
-        ]
-
-    lessons_by_module = []
-    if course_filter:
-        lessons_by_module = [
-            lesson_to_dict(row, controller, courses_by_id, students_by_id)
-            for row in controller.get_lessons_by_module(course_filter)
-        ]
+    search_results = build_search_results(controller, lessons, date_filter, student_filter, course_filter)
 
     return {
         "courses": courses,
         "students": students,
         "lessons": lessons,
         "recent_lessons": recent_lessons,
-        "lessons_by_date": lessons_by_date,
-        "lessons_by_student": lessons_by_student,
-        "lessons_by_module": lessons_by_module,
+        "search_results": search_results,
         "cross_tab": build_cross_tab(controller, students, courses, students_by_id),
         "filters": {
             "date": date_filter,
@@ -391,6 +378,30 @@ def linked_lesson_to_dict(row, courses_by_id, students_by_id):
         "course": course,
         "teacher": teacher,
     }
+
+
+def build_search_results(controller, lessons, date_filter, student_filter, course_filter):
+    selected_student_links = {}
+    if student_filter:
+        selected_student_links = {
+            row[1]: row[0]
+            for row in controller.get_student_lessons(student_filter)
+        }
+
+    results = []
+    for lesson in lessons:
+        if date_filter and lesson["date"] != date_filter:
+            continue
+        if course_filter and lesson["course_id"] != course_filter:
+            continue
+        if student_filter and lesson["id"] not in selected_student_links:
+            continue
+
+        result = dict(lesson)
+        result["selected_student_lesson_id"] = selected_student_links.get(lesson["id"])
+        results.append(result)
+
+    return list(reversed(results))
 
 
 def missing_course(course_id):

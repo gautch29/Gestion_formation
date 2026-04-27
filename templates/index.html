@@ -148,102 +148,71 @@
 
       {% if active_page == 'search' %}
         <section class="page-panel">
-          <div class="search-grid">
-            <div class="surface">
-              <form class="inline-form" action="{{ url_for('search_page') }}" method="get">
-                <label>
-                  <span>Date</span>
-                  <input name="date" value="{{ filters.date }}" placeholder="jj/mm/aaaa">
-                </label>
-                <button class="primary-button compact" type="submit">Rechercher</button>
-              </form>
-              <div class="result-list">
-                {% for lesson in lessons_by_date %}
-                  <article class="result-item">
-                    <div>
-                      <strong>{{ lesson.course.name }}</strong>
-                      <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
-                      <small>
-                        {% for participant in lesson.participants %}
-                          {{ participant.name }}{% if not loop.last %}, {% endif %}
-                        {% else %}
-                          Aucun participant
-                        {% endfor %}
-                      </small>
-                    </div>
+          <form class="surface search-filter-bar" action="{{ url_for('search_page') }}" method="get" data-auto-submit>
+            <label>
+              <span>Date</span>
+              <input name="date" value="{{ filters.date }}" placeholder="jj/mm/aaaa" autocomplete="off">
+            </label>
+            <label>
+              <span>Personnel</span>
+              <select name="student_id">
+                <option value="">Tous</option>
+                {% for student in students %}
+                  <option value="{{ student.id }}" {% if filters.student_id == student.id %}selected{% endif %}>{{ student.label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span>Module</span>
+              <select name="course_id">
+                <option value="">Tous</option>
+                {% for course in courses %}
+                  <option value="{{ course.id }}" {% if filters.course_id == course.id %}selected{% endif %}>{{ course.code }} - {{ course.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <a class="ghost-button" href="{{ url_for('search_page') }}">Effacer</a>
+          </form>
+
+          <div class="surface">
+            <div class="section-heading compact-heading">
+              <h2>Resultats</h2>
+              <span class="result-count">{{ search_results|length }} seance{% if search_results|length > 1 %}s{% endif %}</span>
+            </div>
+            <div class="result-list">
+              {% for lesson in search_results %}
+                <article class="result-item session-result">
+                  <div>
+                    <strong>{{ lesson.course.name }}</strong>
+                    <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
+                    <small>
+                      {% for participant in lesson.participants %}
+                        {{ participant.name }}{% if not loop.last %}, {% endif %}
+                      {% else %}
+                        Aucun participant
+                      {% endfor %}
+                    </small>
+                  </div>
+                  <div class="result-actions">
+                    {% if lesson.selected_student_lesson_id %}
+                      <form action="{{ url_for('delete_student_lesson', student_lesson_id=lesson.selected_student_lesson_id) }}" method="post" data-confirm="Retirer ce lien ?">
+                        <input type="hidden" name="date" value="{{ filters.date }}">
+                        <input type="hidden" name="student_id" value="{{ filters.student_id or '' }}">
+                        <input type="hidden" name="course_id" value="{{ filters.course_id or '' }}">
+                        <button class="ghost-button compact" type="submit">Retirer</button>
+                      </form>
+                    {% endif %}
                     <form action="{{ url_for('delete_lesson', lesson_id=lesson.id) }}" method="post" data-confirm="Supprimer cette seance ?">
+                      <input type="hidden" name="date" value="{{ filters.date }}">
+                      <input type="hidden" name="student_id" value="{{ filters.student_id or '' }}">
+                      <input type="hidden" name="course_id" value="{{ filters.course_id or '' }}">
                       <button class="danger-button icon-button" type="submit" aria-label="Supprimer">x</button>
                     </form>
-                  </article>
-                {% else %}
-                  <p class="empty">Aucune seance pour cette date.</p>
-                {% endfor %}
-              </div>
-            </div>
-
-            <div class="surface">
-              <form class="inline-form" action="{{ url_for('search_page') }}" method="get">
-                <label>
-                  <span>Personnel</span>
-                  <select name="student_id">
-                    <option value="">Selectionner</option>
-                    {% for student in students %}
-                      <option value="{{ student.id }}" {% if filters.student_id == student.id %}selected{% endif %}>{{ student.label }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-                <button class="primary-button compact" type="submit">Rechercher</button>
-              </form>
-              <div class="result-list">
-                {% for lesson in lessons_by_student %}
-                  <article class="result-item">
-                    <div>
-                      <strong>{{ lesson.course.name }}</strong>
-                      <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
-                    </div>
-                    <form action="{{ url_for('delete_student_lesson', student_lesson_id=lesson.student_lesson_id) }}" method="post" data-confirm="Retirer ce lien ?">
-                      <input type="hidden" name="student_id" value="{{ filters.student_id }}">
-                      <button class="ghost-button compact" type="submit">Retirer</button>
-                    </form>
-                  </article>
-                {% else %}
-                  <p class="empty">Aucun resultat pour ce personnel.</p>
-                {% endfor %}
-              </div>
-            </div>
-
-            <div class="surface">
-              <form class="inline-form" action="{{ url_for('search_page') }}" method="get">
-                <label>
-                  <span>Module</span>
-                  <select name="course_id">
-                    <option value="">Selectionner</option>
-                    {% for course in courses %}
-                      <option value="{{ course.id }}" {% if filters.course_id == course.id %}selected{% endif %}>{{ course.code }} - {{ course.name }}</option>
-                    {% endfor %}
-                  </select>
-                </label>
-                <button class="primary-button compact" type="submit">Rechercher</button>
-              </form>
-              <div class="result-list">
-                {% for lesson in lessons_by_module %}
-                  <article class="result-item">
-                    <div>
-                      <strong>{{ lesson.date }}</strong>
-                      <span>{{ lesson.teacher.label }}</span>
-                      <small>
-                        {% for participant in lesson.participants %}
-                          {{ participant.name }}{% if not loop.last %}, {% endif %}
-                        {% else %}
-                          Aucun participant
-                        {% endfor %}
-                      </small>
-                    </div>
-                  </article>
-                {% else %}
-                  <p class="empty">Aucun resultat pour ce module.</p>
-                {% endfor %}
-              </div>
+                  </div>
+                </article>
+              {% else %}
+                <p class="empty">Aucune seance ne correspond aux filtres.</p>
+              {% endfor %}
             </div>
           </div>
         </section>

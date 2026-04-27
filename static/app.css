@@ -227,6 +227,13 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.search-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(190px, 1fr) minmax(210px, 1.1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
 .tabs {
   display: inline-flex;
   align-items: flex-end;
@@ -415,6 +422,24 @@ tbody tr:hover {
   background: #fbfcfa;
 }
 
+.session-result {
+  align-items: start;
+}
+
+.result-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.result-count {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .result-item div,
 .result-item small,
 .result-item span {
@@ -598,7 +623,8 @@ tbody tr:hover {
   }
 
   .search-grid,
-  .split-layout {
+  .split-layout,
+  .search-filter-bar {
     grid-template-columns: 1fr;
   }
 }

@@ -30,6 +30,24 @@ document.querySelectorAll("dialog").forEach((dialog) => {
   });
 });
 
+document.querySelectorAll("form[data-auto-submit]").forEach((form) => {
+  let timeoutId;
+  const submitForm = (delay = 0) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => {
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    }, delay);
+  };
+
+  form.querySelectorAll("select").forEach((select) => {
+    select.addEventListener("change", () => submitForm());
+  });
+
+  form.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", () => submitForm(450));
+  });
+});
+
 document.querySelectorAll("[data-filter]").forEach((input) => {
   const scopeName = input.getAttribute("data-filter");
   input.addEventListener("input", () => {
