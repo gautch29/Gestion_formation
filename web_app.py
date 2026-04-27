@@ -37,7 +37,31 @@ def create_app(database_path=None):
     @app.get("/")
     def index():
         controller = get_controller()
-        return render_template("index.html", **build_context(controller))
+        return render_app(controller, active_page="dashboard", page_title="Vue globale", page_eyebrow="Formation")
+
+    @app.get("/search")
+    def search_page():
+        controller = get_controller()
+        return render_app(controller, active_page="search", page_title="Recherche", page_eyebrow="Retrouver")
+
+    @app.get("/admin")
+    def admin_page():
+        controller = get_controller()
+        active_tab = request.args.get("tab", "personnel")
+        if active_tab not in {"personnel", "formations"}:
+            active_tab = "personnel"
+        return render_app(
+            controller,
+            active_page="admin",
+            active_tab=active_tab,
+            page_title="Admin",
+            page_eyebrow="Gerer",
+        )
+
+    @app.get("/reports")
+    def reports_page():
+        controller = get_controller()
+        return render_app(controller, active_page="reports", page_title="Export PDF", page_eyebrow="Suivi")
 
     @app.post("/courses")
     def create_course():
@@ -49,19 +73,19 @@ def create_app(database_path=None):
 
         if not all([name, code, description, duration]):
             flash("Tous les champs de formation sont requis.", "error")
-            return back("#admin")
+            return redirect(url_for("admin_page", tab="formations"))
 
         try:
             duration_value = int(duration)
         except ValueError:
             flash("La duree doit etre un nombre.", "error")
-            return back("#admin")
+            return redirect(url_for("admin_page", tab="formations"))
 
         if controller.add_course(name, code, description, duration_value):
             flash("Formation ajoutee.", "success")
         else:
             flash("Impossible d'ajouter la formation.", "error")
-        return back("#admin")
+        return redirect(url_for("admin_page", tab="formations"))
 
     @app.post("/courses/<int:course_id>/update")
     def update_course(course_id):
@@ -73,19 +97,19 @@ def create_app(database_path=None):
 
         if not all([name, code, description, duration]):
             flash("Tous les champs de formation sont requis.", "error")
-            return back("#admin")
+            return redirect(url_for("admin_page", tab="formations"))
 
         try:
             duration_value = int(duration)
         except ValueError:
             flash("La duree doit etre un nombre.", "error")
-            return back("#admin")
+            return redirect(url_for("admin_page", tab="formations"))
 
         if controller.update_course(course_id, name, code, description, duration_value):
             flash("Formation mise a jour.", "success")
         else:
             flash("La formation n'a pas pu etre modifiee.", "error")
-        return back("#admin")
+        return redirect(url_for("admin_page", tab="formations"))
 
     @app.post("/courses/<int:course_id>/delete")
     def delete_course(course_id):
@@ -94,7 +118,7 @@ def create_app(database_path=None):
             flash("Formation supprimee.", "success")
         else:
             flash("La formation n'a pas pu etre supprimee.", "error")
-        return back("#admin")
+        return redirect(url_for("admin_page", tab="formations"))
 
     @app.post("/students")
     def create_student():
@@ -106,13 +130,13 @@ def create_app(database_path=None):
 
         if not all([identification, first_name, last_name, peloton]):
             flash("Tous les champs de personnel sont requis.", "error")
-            return back("#admin")
+            return redirect(url_for("admin_page", tab="personnel"))
 
         if controller.add_student(first_name, identification, "", last_name, peloton):
             flash("Personnel ajoute.", "success")
         else:
             flash("Impossible d'ajouter le personnel.", "error")
-        return back("#admin")
+        return redirect(url_for("admin_page", tab="personnel"))
 
     @app.post("/students/<int:student_id>/update")
     def update_student(student_id):
@@ -124,13 +148,13 @@ def create_app(database_path=None):
 
         if not all([identification, first_name, last_name, peloton]):
             flash("Tous les champs de personnel sont requis.", "error")
-            return back("#admin")
+            return redirect(url_for("admin_page", tab="personnel"))
 
         if controller.update_student(student_id, first_name, identification, "", last_name, peloton):
             flash("Personnel mis a jour.", "success")
         else:
             flash("Le personnel n'a pas pu etre modifie.", "error")
-        return back("#admin")
+        return redirect(url_for("admin_page", tab="personnel"))
 
     @app.post("/students/<int:student_id>/delete")
     def delete_student(student_id):
@@ -139,7 +163,7 @@ def create_app(database_path=None):
             flash("Personnel supprime.", "success")
         else:
             flash("Le personnel n'a pas pu etre supprime.", "error")
-        return back("#admin")
+        return redirect(url_for("admin_page", tab="personnel"))
 
     @app.post("/lessons")
     def create_lesson():
@@ -152,13 +176,13 @@ def create_app(database_path=None):
 
         if not lesson_date or course_id is None or teacher_id is None or not participant_ids:
             flash("Date, module, moniteur et participants sont requis.", "error")
-            return back("#sessions")
+            return redirect(url_for("index"))
 
         if controller.add_lesson_by_ids(lesson_date, course_id, teacher_id, participant_ids):
             flash("Seance ajoutee.", "success")
         else:
             flash("Impossible d'ajouter la seance.", "error")
-        return back("#sessions")
+        return redirect(url_for("index"))
 
     @app.post("/lessons/<int:lesson_id>/delete")
     def delete_lesson(lesson_id):
@@ -167,7 +191,7 @@ def create_app(database_path=None):
             flash("Seance supprimee.", "success")
         else:
             flash("La seance n'a pas pu etre supprimee.", "error")
-        return back("#search")
+        return redirect(url_for("search_page"))
 
     @app.post("/student-lessons/<int:student_lesson_id>/delete")
     def delete_student_lesson(student_lesson_id):
@@ -177,8 +201,9 @@ def create_app(database_path=None):
             flash("Lien de seance supprime.", "success")
         else:
             flash("Le lien de seance n'a pas pu etre supprime.", "error")
-        suffix = f"?student_id={student_id}#search" if student_id else "#search"
-        return redirect(url_for("index") + suffix)
+        if student_id:
+            return redirect(url_for("search_page", student_id=student_id))
+        return redirect(url_for("search_page"))
 
     @app.post("/reports/cross-tab")
     def report_cross_tab():
@@ -187,7 +212,7 @@ def create_app(database_path=None):
         student_ids = [value for value in student_ids if value is not None]
         if not student_ids:
             flash("Selectionnez au moins un personnel pour le PDF.", "error")
-            return back("#tracking")
+            return redirect(url_for("reports_page"))
 
         pdf_buffer = build_training_pdf(controller, student_ids)
         filename = f"tableau_suivi_formation_{date.today().strftime('%Y%m%d')}.pdf"
@@ -220,8 +245,15 @@ def current_database_path():
     return current_app.config["DATABASE_PATH"]
 
 
-def back(anchor):
-    return redirect(url_for("index") + anchor)
+def render_app(controller, active_page, page_title, page_eyebrow, active_tab=None):
+    return render_template(
+        "index.html",
+        **build_context(controller),
+        active_page=active_page,
+        active_tab=active_tab,
+        page_title=page_title,
+        page_eyebrow=page_eyebrow,
+    )
 
 
 def parse_int(value):

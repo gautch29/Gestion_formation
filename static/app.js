@@ -1,20 +1,31 @@
-const navLinks = Array.from(document.querySelectorAll(".side-nav a"));
-
-function setActiveNav() {
-  const current = window.location.hash || "#dashboard";
-  navLinks.forEach((link) => {
-    link.classList.toggle("active", link.getAttribute("href") === current);
-  });
-}
-
-window.addEventListener("hashchange", setActiveNav);
-setActiveNav();
-
 document.querySelectorAll("form[data-confirm]").forEach((form) => {
   form.addEventListener("submit", (event) => {
     const message = form.getAttribute("data-confirm");
     if (message && !window.confirm(message)) {
       event.preventDefault();
+    }
+  });
+});
+
+document.querySelectorAll("[data-dialog-open]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const dialog = document.getElementById(button.getAttribute("data-dialog-open"));
+    if (dialog) {
+      dialog.showModal();
+    }
+  });
+});
+
+document.querySelectorAll("[data-dialog-close]").forEach((button) => {
+  button.addEventListener("click", () => {
+    button.closest("dialog")?.close();
+  });
+});
+
+document.querySelectorAll("dialog").forEach((dialog) => {
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) {
+      dialog.close();
     }
   });
 });

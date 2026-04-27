@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gestion formation</title>
+  <title>{{ page_title }} - Gestion formation</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
-<body>
+<body data-page="{{ active_page }}">
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="#dashboard" aria-label="Accueil">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="Accueil">
         <img src="{{ url_for('logo') }}" alt="">
         <span>
           <strong>Gestion formation</strong>
@@ -18,23 +18,25 @@
         </span>
       </a>
       <nav class="side-nav" aria-label="Navigation principale">
-        <a href="#dashboard">Vue globale</a>
-        <a href="#sessions">Nouvelle seance</a>
-        <a href="#search">Recherche</a>
-        <a href="#admin">Admin</a>
-        <a href="#tracking">Suivi PDF</a>
+        <a class="{% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('index') }}">Vue globale</a>
+        <a class="{% if active_page == 'search' %}active{% endif %}" href="{{ url_for('search_page') }}">Recherche</a>
+        <a class="{% if active_page == 'admin' %}active{% endif %}" href="{{ url_for('admin_page') }}">Admin</a>
+        <a class="{% if active_page == 'reports' %}active{% endif %}" href="{{ url_for('reports_page') }}">Export PDF</a>
       </nav>
     </aside>
 
     <main class="workspace">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Formation</p>
-          <h1>Tableau de bord</h1>
+          <p class="eyebrow">{{ page_eyebrow }}</p>
+          <h1>{{ page_title }}</h1>
         </div>
         <div class="topbar-actions">
-          <a class="ghost-button" href="#sessions">+ Seance</a>
-          <a class="primary-button" href="#tracking">PDF</a>
+          {% if active_page == 'dashboard' %}
+            <button class="primary-button" type="button" data-dialog-open="lesson-dialog">+ Seance</button>
+          {% elif active_page != 'reports' %}
+            <a class="ghost-button" href="{{ url_for('reports_page') }}">PDF</a>
+          {% endif %}
         </div>
       </header>
 
@@ -48,371 +50,376 @@
         {% endif %}
       {% endwith %}
 
-      <section id="dashboard" class="section-band">
-        <div class="metric-grid">
-          <article class="metric-card">
-            <span>Formations</span>
-            <strong>{{ stats.courses }}</strong>
-          </article>
-          <article class="metric-card">
-            <span>Personnel</span>
-            <strong>{{ stats.students }}</strong>
-          </article>
-          <article class="metric-card">
-            <span>Seances</span>
-            <strong>{{ stats.lessons }}</strong>
-          </article>
-        </div>
-
-        <div class="surface">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Activite</p>
-              <h2>Dernieres seances</h2>
-            </div>
-            <a class="ghost-button compact" href="#search">Voir</a>
+      {% if active_page == 'dashboard' %}
+        <section class="page-panel">
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span>Formations</span>
+              <strong>{{ stats.courses }}</strong>
+            </article>
+            <article class="metric-card">
+              <span>Personnel</span>
+              <strong>{{ stats.students }}</strong>
+            </article>
+            <article class="metric-card">
+              <span>Seances</span>
+              <strong>{{ stats.lessons }}</strong>
+            </article>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Module</th>
-                  <th>Moniteur</th>
-                  <th>Participants</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for lesson in recent_lessons %}
+
+          <div class="surface">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Activite</p>
+                <h2>Dernieres seances</h2>
+              </div>
+              <a class="ghost-button compact" href="{{ url_for('search_page') }}">Voir</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
                   <tr>
-                    <td>{{ lesson.date }}</td>
-                    <td><strong>{{ lesson.course.code }}</strong> {{ lesson.course.name }}</td>
-                    <td>{{ lesson.teacher.label }}</td>
-                    <td>{{ lesson.participants|length }}</td>
+                    <th>Date</th>
+                    <th>Module</th>
+                    <th>Moniteur</th>
+                    <th>Participants</th>
                   </tr>
-                {% else %}
-                  <tr><td colspan="4" class="empty">Aucune seance enregistree.</td></tr>
+                </thead>
+                <tbody>
+                  {% for lesson in recent_lessons %}
+                    <tr>
+                      <td>{{ lesson.date }}</td>
+                      <td><strong>{{ lesson.course.code }}</strong> {{ lesson.course.name }}</td>
+                      <td>{{ lesson.teacher.label }}</td>
+                      <td>{{ lesson.participants|length }}</td>
+                    </tr>
+                  {% else %}
+                    <tr><td colspan="4" class="empty">Aucune seance enregistree.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <dialog class="lesson-dialog" id="lesson-dialog" aria-labelledby="lesson-dialog-title">
+          <form class="dialog-card form-grid" action="{{ url_for('create_lesson') }}" method="post">
+            <div class="dialog-heading wide">
+              <div>
+                <p class="eyebrow">Planifier</p>
+                <h2 id="lesson-dialog-title">Nouvelle seance</h2>
+              </div>
+              <button class="ghost-button icon-button" type="button" data-dialog-close aria-label="Fermer">x</button>
+            </div>
+            <label>
+              <span>Date</span>
+              <input name="lesson_date" value="{{ today }}" placeholder="jj/mm/aaaa" required>
+            </label>
+            <label>
+              <span>Module</span>
+              <select name="course_id" required>
+                <option value="">Selectionner</option>
+                {% for course in courses %}
+                  <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
                 {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section id="sessions" class="section-band split-layout">
-        <div>
-          <p class="eyebrow">Planifier</p>
-          <h2>Nouvelle seance</h2>
-        </div>
-        <form class="surface form-grid" action="{{ url_for('create_lesson') }}" method="post">
-          <label>
-            <span>Date</span>
-            <input name="lesson_date" value="{{ today }}" placeholder="jj/mm/aaaa" required>
-          </label>
-          <label>
-            <span>Module</span>
-            <select name="course_id" required>
-              <option value="">Selectionner</option>
-              {% for course in courses %}
-                <option value="{{ course.id }}">{{ course.code }} - {{ course.name }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label>
-            <span>Moniteur</span>
-            <select name="teacher_id" required>
-              <option value="">Selectionner</option>
-              {% for student in students %}
-                <option value="{{ student.id }}">{{ student.label }}{% if student.identification %} (ID: {{ student.identification }}){% endif %}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="wide">
-            <span>Participants</span>
-            <select name="participant_ids" multiple size="8" required>
-              {% for student in students %}
-                <option value="{{ student.id }}">{{ student.label }}{% if student.identification %} - {{ student.identification }}{% endif %}{% if student.peloton %} - {{ student.peloton }}{% endif %}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <button class="primary-button wide" type="submit">+ Ajouter la seance</button>
-        </form>
-      </section>
-
-      <section id="search" class="section-band">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Retrouver</p>
-            <h2>Recherche</h2>
-          </div>
-        </div>
-
-        <div class="search-grid">
-          <div class="surface">
-            <form class="inline-form" action="{{ url_for('index') }}#search" method="get">
-              <label>
-                <span>Date</span>
-                <input name="date" value="{{ filters.date }}" placeholder="jj/mm/aaaa">
-              </label>
-              <button class="primary-button compact" type="submit">Rechercher</button>
-            </form>
-            <div class="result-list">
-              {% for lesson in lessons_by_date %}
-                <article class="result-item">
-                  <div>
-                    <strong>{{ lesson.course.name }}</strong>
-                    <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
-                    <small>
-                      {% for participant in lesson.participants %}
-                        {{ participant.name }}{% if not loop.last %}, {% endif %}
-                      {% else %}
-                        Aucun participant
-                      {% endfor %}
-                    </small>
-                  </div>
-                  <form action="{{ url_for('delete_lesson', lesson_id=lesson.id) }}" method="post" data-confirm="Supprimer cette seance ?">
-                    <button class="danger-button icon-button" type="submit" aria-label="Supprimer">x</button>
-                  </form>
-                </article>
-              {% else %}
-                <p class="empty">Aucune seance pour cette date.</p>
-              {% endfor %}
-            </div>
-          </div>
-
-          <div class="surface">
-            <form class="inline-form" action="{{ url_for('index') }}#search" method="get">
-              <label>
-                <span>Personnel</span>
-                <select name="student_id">
-                  <option value="">Selectionner</option>
-                  {% for student in students %}
-                    <option value="{{ student.id }}" {% if filters.student_id == student.id %}selected{% endif %}>{{ student.label }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <button class="primary-button compact" type="submit">Rechercher</button>
-            </form>
-            <div class="result-list">
-              {% for lesson in lessons_by_student %}
-                <article class="result-item">
-                  <div>
-                    <strong>{{ lesson.course.name }}</strong>
-                    <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
-                  </div>
-                  <form action="{{ url_for('delete_student_lesson', student_lesson_id=lesson.student_lesson_id) }}" method="post" data-confirm="Retirer ce lien ?">
-                    <input type="hidden" name="student_id" value="{{ filters.student_id }}">
-                    <button class="ghost-button compact" type="submit">Retirer</button>
-                  </form>
-                </article>
-              {% else %}
-                <p class="empty">Aucun resultat pour ce personnel.</p>
-              {% endfor %}
-            </div>
-          </div>
-
-          <div class="surface">
-            <form class="inline-form" action="{{ url_for('index') }}#search" method="get">
-              <label>
-                <span>Module</span>
-                <select name="course_id">
-                  <option value="">Selectionner</option>
-                  {% for course in courses %}
-                    <option value="{{ course.id }}" {% if filters.course_id == course.id %}selected{% endif %}>{{ course.code }} - {{ course.name }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <button class="primary-button compact" type="submit">Rechercher</button>
-            </form>
-            <div class="result-list">
-              {% for lesson in lessons_by_module %}
-                <article class="result-item">
-                  <div>
-                    <strong>{{ lesson.date }}</strong>
-                    <span>{{ lesson.teacher.label }}</span>
-                    <small>
-                      {% for participant in lesson.participants %}
-                        {{ participant.name }}{% if not loop.last %}, {% endif %}
-                      {% else %}
-                        Aucun participant
-                      {% endfor %}
-                    </small>
-                  </div>
-                </article>
-              {% else %}
-                <p class="empty">Aucun resultat pour ce module.</p>
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="admin" class="section-band">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Gerer</p>
-            <h2>Admin</h2>
-          </div>
-          <input class="table-filter" data-filter="admin-tables" placeholder="Filtrer">
-        </div>
-
-        <div class="admin-grid">
-          <form class="surface form-grid" action="{{ url_for('create_student') }}" method="post">
-            <h3>Ajouter un personnel</h3>
-            <label><span>Identification</span><input name="student_identification" required></label>
-            <label><span>Prenom</span><input name="student_name" required></label>
-            <label><span>Nom</span><input name="nom_de_famille" required></label>
-            <label><span>Peloton</span><input name="peloton" required></label>
-            <button class="primary-button wide" type="submit">+ Ajouter</button>
-          </form>
-
-          <form class="surface form-grid" action="{{ url_for('create_course') }}" method="post">
-            <h3>Ajouter une formation</h3>
-            <label><span>Nom</span><input name="course_name" required></label>
-            <label><span>Code</span><input name="course_code" required></label>
-            <label><span>Duree</span><input name="course_duration" type="number" min="0" required></label>
-            <label class="wide"><span>Description</span><input name="course_description" required></label>
-            <button class="primary-button wide" type="submit">+ Ajouter</button>
-          </form>
-        </div>
-
-        <div class="surface" data-filter-scope="admin-tables">
-          <div class="section-heading compact-heading">
-            <h3>Personnel</h3>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>ID</th>
-                  <th>Peloton</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+              </select>
+            </label>
+            <label>
+              <span>Moniteur</span>
+              <select name="teacher_id" required>
+                <option value="">Selectionner</option>
                 {% for student in students %}
-                  <tr data-filter-row>
-                    <td>{{ student.label }}</td>
-                    <td>{{ student.identification }}</td>
-                    <td>{{ student.peloton }}</td>
-                    <td class="action-cell">
-                      <details class="inline-editor">
-                        <summary>Modifier</summary>
-                        <form action="{{ url_for('update_student', student_id=student.id) }}" method="post">
-                          <input name="student_identification" value="{{ student.identification }}" required>
-                          <input name="student_name" value="{{ student.first_name }}" required>
-                          <input name="nom_de_famille" value="{{ student.last_name }}" required>
-                          <input name="peloton" value="{{ student.peloton }}" required>
-                          <button class="primary-button compact" type="submit">OK</button>
-                        </form>
-                      </details>
-                      <form action="{{ url_for('delete_student', student_id=student.id) }}" method="post" data-confirm="Supprimer ce personnel ?">
-                        <button class="danger-button compact" type="submit">Supprimer</button>
-                      </form>
-                    </td>
-                  </tr>
-                {% else %}
-                  <tr><td colspan="4" class="empty">Aucun personnel.</td></tr>
+                  <option value="{{ student.id }}">{{ student.label }}{% if student.identification %} (ID: {{ student.identification }}){% endif %}</option>
                 {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </select>
+            </label>
+            <label class="wide">
+              <span>Participants</span>
+              <select name="participant_ids" multiple size="8" required>
+                {% for student in students %}
+                  <option value="{{ student.id }}">{{ student.label }}{% if student.identification %} - {{ student.identification }}{% endif %}{% if student.peloton %} - {{ student.peloton }}{% endif %}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <button class="primary-button wide" type="submit">+ Ajouter la seance</button>
+          </form>
+        </dialog>
+      {% endif %}
 
-        <div class="surface" data-filter-scope="admin-tables">
-          <div class="section-heading compact-heading">
-            <h3>Formations</h3>
+      {% if active_page == 'search' %}
+        <section class="page-panel">
+          <div class="search-grid">
+            <div class="surface">
+              <form class="inline-form" action="{{ url_for('search_page') }}" method="get">
+                <label>
+                  <span>Date</span>
+                  <input name="date" value="{{ filters.date }}" placeholder="jj/mm/aaaa">
+                </label>
+                <button class="primary-button compact" type="submit">Rechercher</button>
+              </form>
+              <div class="result-list">
+                {% for lesson in lessons_by_date %}
+                  <article class="result-item">
+                    <div>
+                      <strong>{{ lesson.course.name }}</strong>
+                      <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
+                      <small>
+                        {% for participant in lesson.participants %}
+                          {{ participant.name }}{% if not loop.last %}, {% endif %}
+                        {% else %}
+                          Aucun participant
+                        {% endfor %}
+                      </small>
+                    </div>
+                    <form action="{{ url_for('delete_lesson', lesson_id=lesson.id) }}" method="post" data-confirm="Supprimer cette seance ?">
+                      <button class="danger-button icon-button" type="submit" aria-label="Supprimer">x</button>
+                    </form>
+                  </article>
+                {% else %}
+                  <p class="empty">Aucune seance pour cette date.</p>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="surface">
+              <form class="inline-form" action="{{ url_for('search_page') }}" method="get">
+                <label>
+                  <span>Personnel</span>
+                  <select name="student_id">
+                    <option value="">Selectionner</option>
+                    {% for student in students %}
+                      <option value="{{ student.id }}" {% if filters.student_id == student.id %}selected{% endif %}>{{ student.label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <button class="primary-button compact" type="submit">Rechercher</button>
+              </form>
+              <div class="result-list">
+                {% for lesson in lessons_by_student %}
+                  <article class="result-item">
+                    <div>
+                      <strong>{{ lesson.course.name }}</strong>
+                      <span>{{ lesson.date }} - {{ lesson.teacher.label }}</span>
+                    </div>
+                    <form action="{{ url_for('delete_student_lesson', student_lesson_id=lesson.student_lesson_id) }}" method="post" data-confirm="Retirer ce lien ?">
+                      <input type="hidden" name="student_id" value="{{ filters.student_id }}">
+                      <button class="ghost-button compact" type="submit">Retirer</button>
+                    </form>
+                  </article>
+                {% else %}
+                  <p class="empty">Aucun resultat pour ce personnel.</p>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="surface">
+              <form class="inline-form" action="{{ url_for('search_page') }}" method="get">
+                <label>
+                  <span>Module</span>
+                  <select name="course_id">
+                    <option value="">Selectionner</option>
+                    {% for course in courses %}
+                      <option value="{{ course.id }}" {% if filters.course_id == course.id %}selected{% endif %}>{{ course.code }} - {{ course.name }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <button class="primary-button compact" type="submit">Rechercher</button>
+              </form>
+              <div class="result-list">
+                {% for lesson in lessons_by_module %}
+                  <article class="result-item">
+                    <div>
+                      <strong>{{ lesson.date }}</strong>
+                      <span>{{ lesson.teacher.label }}</span>
+                      <small>
+                        {% for participant in lesson.participants %}
+                          {{ participant.name }}{% if not loop.last %}, {% endif %}
+                        {% else %}
+                          Aucun participant
+                        {% endfor %}
+                      </small>
+                    </div>
+                  </article>
+                {% else %}
+                  <p class="empty">Aucun resultat pour ce module.</p>
+                {% endfor %}
+              </div>
+            </div>
           </div>
-          <div class="table-wrap">
+        </section>
+      {% endif %}
+
+      {% if active_page == 'admin' %}
+        <section class="page-panel">
+          <div class="section-heading">
+            <nav class="tabs" aria-label="Admin">
+              <a class="{% if active_tab == 'personnel' %}active{% endif %}" href="{{ url_for('admin_page', tab='personnel') }}">Personnel</a>
+              <a class="{% if active_tab == 'formations' %}active{% endif %}" href="{{ url_for('admin_page', tab='formations') }}">Formations</a>
+            </nav>
+            <input class="table-filter" data-filter="admin-table" placeholder="Filtrer">
+          </div>
+
+          {% if active_tab == 'personnel' %}
+            <form class="surface form-grid" action="{{ url_for('create_student') }}" method="post">
+              <h3>Ajouter un personnel</h3>
+              <label><span>Identification</span><input name="student_identification" required></label>
+              <label><span>Prenom</span><input name="student_name" required></label>
+              <label><span>Nom</span><input name="nom_de_famille" required></label>
+              <label><span>Peloton</span><input name="peloton" required></label>
+              <button class="primary-button wide" type="submit">+ Ajouter</button>
+            </form>
+
+            <div class="surface" data-filter-scope="admin-table">
+              <div class="section-heading compact-heading">
+                <h3>Personnel</h3>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nom</th>
+                      <th>ID</th>
+                      <th>Peloton</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for student in students %}
+                      <tr data-filter-row>
+                        <td>{{ student.label }}</td>
+                        <td>{{ student.identification }}</td>
+                        <td>{{ student.peloton }}</td>
+                        <td class="action-cell">
+                          <details class="inline-editor">
+                            <summary>Modifier</summary>
+                            <form action="{{ url_for('update_student', student_id=student.id) }}" method="post">
+                              <input name="student_identification" value="{{ student.identification }}" required>
+                              <input name="student_name" value="{{ student.first_name }}" required>
+                              <input name="nom_de_famille" value="{{ student.last_name }}" required>
+                              <input name="peloton" value="{{ student.peloton }}" required>
+                              <button class="primary-button compact" type="submit">OK</button>
+                            </form>
+                          </details>
+                          <form action="{{ url_for('delete_student', student_id=student.id) }}" method="post" data-confirm="Supprimer ce personnel ?">
+                            <button class="danger-button compact" type="submit">Supprimer</button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% else %}
+                      <tr><td colspan="4" class="empty">Aucun personnel.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% else %}
+            <form class="surface form-grid" action="{{ url_for('create_course') }}" method="post">
+              <h3>Ajouter une formation</h3>
+              <label><span>Nom</span><input name="course_name" required></label>
+              <label><span>Code</span><input name="course_code" required></label>
+              <label><span>Duree</span><input name="course_duration" type="number" min="0" required></label>
+              <label class="wide"><span>Description</span><input name="course_description" required></label>
+              <button class="primary-button wide" type="submit">+ Ajouter</button>
+            </form>
+
+            <div class="surface" data-filter-scope="admin-table">
+              <div class="section-heading compact-heading">
+                <h3>Formations</h3>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Nom</th>
+                      <th>Duree</th>
+                      <th>Description</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for course in courses %}
+                      <tr data-filter-row>
+                        <td>{{ course.code }}</td>
+                        <td>{{ course.name }}</td>
+                        <td>{{ course.duration }}</td>
+                        <td>{{ course.description }}</td>
+                        <td class="action-cell">
+                          <details class="inline-editor">
+                            <summary>Modifier</summary>
+                            <form action="{{ url_for('update_course', course_id=course.id) }}" method="post">
+                              <input name="course_code" value="{{ course.code }}" required>
+                              <input name="course_name" value="{{ course.name }}" required>
+                              <input name="course_duration" type="number" value="{{ course.duration }}" required>
+                              <input name="course_description" value="{{ course.description }}" required>
+                              <button class="primary-button compact" type="submit">OK</button>
+                            </form>
+                          </details>
+                          <form action="{{ url_for('delete_course', course_id=course.id) }}" method="post" data-confirm="Supprimer cette formation ?">
+                            <button class="danger-button compact" type="submit">Supprimer</button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% else %}
+                      <tr><td colspan="5" class="empty">Aucune formation.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      {% if active_page == 'reports' %}
+        <section class="page-panel">
+          <div class="surface report-panel">
+            <div>
+              <p class="eyebrow">Selection</p>
+              <h2>Personnel a exporter</h2>
+            </div>
+            <form action="{{ url_for('report_cross_tab') }}" method="post" class="report-form">
+              <select name="student_ids" multiple size="8" aria-label="Personnel PDF">
+                {% for student in students %}
+                  <option value="{{ student.id }}">{{ student.label }}</option>
+                {% endfor %}
+              </select>
+              <button class="primary-button" type="submit">Generer le PDF</button>
+            </form>
+          </div>
+
+          <div class="surface table-wrap tracking-table">
             <table>
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Nom</th>
-                  <th>Duree</th>
-                  <th>Description</th>
-                  <th>Actions</th>
+                  <th>Personnel</th>
+                  {% for course in courses %}
+                    <th>{{ course.code }}</th>
+                  {% endfor %}
                 </tr>
               </thead>
               <tbody>
-                {% for course in courses %}
-                  <tr data-filter-row>
-                    <td>{{ course.code }}</td>
-                    <td>{{ course.name }}</td>
-                    <td>{{ course.duration }}</td>
-                    <td>{{ course.description }}</td>
-                    <td class="action-cell">
-                      <details class="inline-editor">
-                        <summary>Modifier</summary>
-                        <form action="{{ url_for('update_course', course_id=course.id) }}" method="post">
-                          <input name="course_code" value="{{ course.code }}" required>
-                          <input name="course_name" value="{{ course.name }}" required>
-                          <input name="course_duration" type="number" value="{{ course.duration }}" required>
-                          <input name="course_description" value="{{ course.description }}" required>
-                          <button class="primary-button compact" type="submit">OK</button>
-                        </form>
-                      </details>
-                      <form action="{{ url_for('delete_course', course_id=course.id) }}" method="post" data-confirm="Supprimer cette formation ?">
-                        <button class="danger-button compact" type="submit">Supprimer</button>
-                      </form>
-                    </td>
+                {% for row in cross_tab %}
+                  <tr>
+                    <td><strong>{{ row.student.label }}</strong></td>
+                    {% for cell in row.cells %}
+                      <td class="{% if cell['items'] %}done{% else %}missing{% endif %}">
+                        {% for item in cell['items'] %}
+                          <span>{{ item.date }}<small>{{ item.teacher }}</small></span>
+                        {% else %}
+                          <span>Non effectue</span>
+                        {% endfor %}
+                      </td>
+                    {% endfor %}
                   </tr>
                 {% else %}
-                  <tr><td colspan="5" class="empty">Aucune formation.</td></tr>
+                  <tr><td colspan="{{ courses|length + 1 }}" class="empty">Aucune donnee.</td></tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-        </div>
-      </section>
-
-      <section id="tracking" class="section-band">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Suivi</p>
-            <h2>Tableau croise</h2>
-          </div>
-          <form action="{{ url_for('report_cross_tab') }}" method="post" class="report-form">
-            <select name="student_ids" multiple size="5" aria-label="Personnel PDF">
-              {% for student in students %}
-                <option value="{{ student.id }}">{{ student.label }}</option>
-              {% endfor %}
-            </select>
-            <button class="primary-button" type="submit">PDF</button>
-          </form>
-        </div>
-        <div class="surface table-wrap tracking-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Personnel</th>
-                {% for course in courses %}
-                  <th>{{ course.code }}</th>
-                {% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in cross_tab %}
-                <tr>
-                  <td><strong>{{ row.student.label }}</strong></td>
-                  {% for cell in row.cells %}
-                    <td class="{% if cell['items'] %}done{% else %}missing{% endif %}">
-                      {% for item in cell['items'] %}
-                        <span>{{ item.date }}<small>{{ item.teacher }}</small></span>
-                      {% else %}
-                        <span>Non effectue</span>
-                      {% endfor %}
-                    </td>
-                  {% endfor %}
-                </tr>
-              {% else %}
-                <tr><td colspan="{{ courses|length + 1 }}" class="empty">Aucune donnee.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        </section>
+      {% endif %}
     </main>
   </div>
 </body>

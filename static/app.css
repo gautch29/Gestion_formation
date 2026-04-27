@@ -18,10 +18,6 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 body {
   margin: 0;
   min-width: 320px;
@@ -168,14 +164,9 @@ p {
   margin-bottom: 8px;
 }
 
-.section-band {
-  padding: 24px 0;
-  border-top: 1px solid var(--line);
-}
-
-.section-band:first-of-type {
-  border-top: 0;
-  padding-top: 0;
+.page-panel {
+  display: grid;
+  gap: 16px;
 }
 
 .metric-grid {
@@ -234,6 +225,34 @@ p {
 
 .admin-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tabs {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 46px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 45px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.tabs a.active {
+  margin-bottom: -1px;
+  background: var(--panel);
+  border-color: var(--line);
+  border-bottom-color: var(--panel);
+  color: var(--ink);
 }
 
 .form-grid {
@@ -483,12 +502,48 @@ tbody tr:hover {
   color: #842d20;
 }
 
+.lesson-dialog {
+  width: min(760px, calc(100vw - 28px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.lesson-dialog::backdrop {
+  background: rgba(15, 25, 20, 0.46);
+}
+
+.dialog-card {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.report-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
 .report-form {
   align-items: end;
 }
 
 .report-form select {
-  min-width: 230px;
+  min-width: 260px;
 }
 
 .tracking-table table {
@@ -533,7 +588,7 @@ tbody tr:hover {
   }
 
   .side-nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-content: center;
   }
 
@@ -563,7 +618,8 @@ tbody tr:hover {
 
   .metric-grid,
   .admin-grid,
-  .form-grid {
+  .form-grid,
+  .report-panel {
     grid-template-columns: 1fr;
   }
 
